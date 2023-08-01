@@ -1677,7 +1677,7 @@ Although the coefficients for the prediction model and the classification cut-of
 
 Code used to generate figures for the thesis.
 
-# ## Figure 4.2
+## Figure 4.2
 
 ```{r, fig.width=12, fig.height=10}
 # tumor_sample <- tumor_sample %>%
@@ -1979,8 +1979,8 @@ Code used to generate figures for the thesis.
 # ```{r}
 # # png("~/PhD_thesis/Images/chapter_04/ROC.png",
 # #     width = 120, height =80, units='mm', res = 300)
-# # auroc(splsda.final, roc.comp = 2, print = FALSE,
-# #       legend.title = "Subtype")
+# #  auroc(splsda.final, newdata = combined_test, outcome.test = test_type, roc.comp = 2, print = FALSE,
+# #     legend.title = "Subtype")
 # # dev.off()
 # ```
 # 
