@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+<meta name="date" content="2022-09-09" />
+
+<title>ER_signal</title>
+
+<script src="site_libs/header-attrs-2.23/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<script src="site_libs/htmlwidgets-1.6.2/htmlwidgets.js"></script>
+<link href="site_libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+<script src="site_libs/datatables-binding-0.28/datatables.js"></script>
+<link href="site_libs/dt-core-1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="site_libs/dt-core-1.13.4/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="site_libs/dt-core-1.13.4/js/jquery.dataTables.min.js"></script>
+<link href="site_libs/nouislider-7.0.10/jquery.nouislider.min.css" rel="stylesheet" />
+<script src="site_libs/nouislider-7.0.10/jquery.nouislider.min.js"></script>
+<link href="site_libs/selectize-0.12.0/selectize.bootstrap3.css" rel="stylesheet" />
+<script src="site_libs/selectize-0.12.0/selectize.min.js"></script>
+<link href="site_libs/crosstalk-1.2.0/css/crosstalk.min.css" rel="stylesheet" />
+<script src="site_libs/crosstalk-1.2.0/js/crosstalk.min.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">20131906_HickeyT_JC_NormalBreast</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="description.html">Description</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    QC
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="qc_raw.html">Raw Data</a>
+    </li>
+    <li>
+      <a href="qc_trimmed.html">Trimmed Data</a>
+    </li>
+    <li>
+      <a href="qc_aligned.html">Aligned Data</a>
+    </li>
+  </ul>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Analysis
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="dge_analysis.html">Differential Gene Expression</a>
+    </li>
+    <li>
+      <a href="IDC_ILC.html">IDC/ILC classification</a>
+    </li>
+    <li>
+      <a href="CellDecon_WEHI.html">Cell Type Deconvolution</a>
+    </li>
+    <li>
+      <a href="sSNAPPY.html">sSNAPPY</a>
+    </li>
+    <li>
+      <a href="E2_signal.html">E2 response</a>
+    </li>
+    <li>
+      <a href="DHT_signal.html">DHT response</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">ER_signal</h1>
+<h4 class="date">2022-09-09</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2023-08-01
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 5
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 1
+</p>
+<p>
+<strong>Knit directory:</strong> <code>WenjunLiu_Thesis_Chapter4/</code>
+<span class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.0). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200930code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20200930)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200930code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200930)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongnoversioncontrol">
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> <strong>Repository version:</strong> no
+version control </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrongnoversioncontrol"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Tracking code development and connecting the code version to the
+results is critical for reproducibility. To start using Git, open the
+Terminal and type <code>git init</code> in your project directory.</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+<p>
+This project is not being versioned with Git. To obtain the full
+reproducibility benefits of using workflowr, please see
+<code>?wflow_start</code>.
+</p>
+<hr>
+</div>
+</div>
+</div>
+<pre class="r"><code>library(tidyverse)
+library(yaml)
+library(scales)
+library(pander)
+library(AnnotationHub)
+library(ggraph)
+library(igraph)
+library(ensembldb)
+library(cowplot)
+library(magrittr)
+library(sSNAPPY)
+library(cqn)
+library(DT)
+library(multcomp)
+library(rvest)
+library(ggfortify)
+library(xml2)
+library(org.Hs.eg.db)
+library(lme4)
+library(colorspace)
+library(lmerTest)
+library(reactable)
+library(corrplot)
+library(scatterpie)
+library(htmltools)
+library(RColorBrewer)
+library(pathview)
+library(ggplotify)
+library(msigdbr)
+library(clusterProfiler)
+library(patchwork)
+source(here::here(&quot;analysis/smallFunctions/make_gsNetwork.R&quot;))</code></pre>
+<pre class="r"><code>panderOptions(&quot;table.split.table&quot;, Inf)
+panderOptions(&quot;big.mark&quot;, &quot;,&quot;)
+theme_set(theme_bw())</code></pre>
+<pre class="r"><code>config &lt;- here::here(&quot;config/config.yml&quot;) %&gt;%
+  read_yaml()
+suffix &lt;- paste0(config$tag)
+sp &lt;- config$ref$species %&gt;%
+  str_replace(&quot;(^[a-z])[a-z]*_([a-z]+)&quot;, &quot;\\1\\2&quot;) %&gt;%
+  str_to_title()</code></pre>
+<div id="setup" class="section level1">
+<h1>Setup</h1>
+<div id="gene-annotations" class="section level2">
+<h2>Gene Annotations</h2>
+<pre class="r"><code>ah &lt;- AnnotationHub() %&gt;%
+  subset(rdataclass == &quot;EnsDb&quot;) %&gt;%
+  subset(str_detect(description, as.character(config$ref$release))) %&gt;%
+  subset(genome == config$ref$build)
+stopifnot(length(ah) == 1)</code></pre>
+<pre class="r"><code>ensDb &lt;- ah[[1]]
+genesGR &lt;- read_rds(here::here(&quot;output/genesGR.rds&quot;))</code></pre>
+</div>
+<div id="sample-metadata-and-merged-counts" class="section level2">
+<h2>Sample metadata and merged counts</h2>
+<p>Sample metadata and merged counts were read in and filtered as in the
+dge_analysis.Rmd. DGElists were formed for tumor samples and
+<code>cqn</code> was applied for biases introduced by systematic
+artefacts.</p>
+<pre class="r"><code>init_cellType &lt;- read_delim(here::here(&quot;config/sample_meta.txt&quot;), delim = &quot;\t&quot;)
+init_cellType &lt;- init_cellType %&gt;%
+    mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex(&quot;Stroma&quot;, ignore_case = T)), TRUE, FALSE), 
+           Epithelial = ifelse(str_detect(Dominant_cell_type, regex(&quot;Epithelial&quot;, ignore_case = T)), TRUE, FALSE), 
+           Ducts = ifelse(str_detect(Dominant_cell_type, regex(&quot;ducts&quot;, ignore_case = T)), TRUE, FALSE), 
+           Fat = ifelse(str_detect(Dominant_cell_type, regex(&quot;fat&quot;, ignore_case = T)), TRUE, FALSE), 
+           patient = str_replace(patient, &quot;TH&quot;, &quot;TH-&quot;)) %&gt;%
+    pivot_longer(c(&quot;Stroma&quot;, &quot;Epithelial&quot;, &quot;Ducts&quot;, &quot;Fat&quot;),
+                 names_to = &quot;cell_type&quot;, 
+                 values_to = &quot;TF&quot;) %&gt;%
+    mutate(cell_type = ifelse(TF, cell_type, NA)) %&gt;%
+    dplyr::select(-c(&quot;TF&quot;, &quot;Dominant_cell_type&quot;)) %&gt;%
+    .[!is.na(.$cell_type),] %&gt;%
+    chop(&quot;cell_type&quot;) %&gt;%
+    mutate(cell_type = vapply(.$cell_type, function(x){
+        paste(x,collapse = &quot;;&quot;)
+    }, character(1)))</code></pre>
+<pre class="r"><code>samples &lt;- config$samples %&gt;%
+  here::here() %&gt;%
+  read_tsv() %&gt;%
+    left_join(init_cellType) %&gt;%
+  mutate(
+    Filename = paste0(sample, &quot;.r_1&quot;), 
+    condition = ifelse(Tumor, 
+                       paste(&quot;Tumor&quot;, treat, sep = &quot;_&quot;), 
+                       paste(&quot;Normal&quot;, treat, sep = &quot;_&quot;)), 
+    patient = vapply(.$patient, function(x){str_split(x, &quot;-&quot;)[[1]][2]}, character(1)), 
+    patient = ifelse(Tumor, 
+                       paste(&quot;Tumor&quot;, patient, sep = &quot;-&quot;), 
+                       paste(&quot;Normal&quot;,patient, sep = &quot;-&quot;)), 
+    desc = paste(patient, treat, sep = &quot; &quot;)
+  ) %&gt;%
+  dplyr::select(-c(&quot;name&quot;, &quot;sample&quot;)) %&gt;%
+  dplyr::rename(name = desc) %&gt;%
+  mutate_if(
+    function(x){length(unique(x)) &lt; length(x)},
+    as.factor
+  ) %&gt;%
+  mutate(
+    treat = relevel(treat, ref = &quot;Veh&quot;)
+  )</code></pre>
+<pre class="r"><code>mergedSamples &lt;- samples %&gt;%
+  group_by(name, patient, treat, Tumor, cell_type, Tissue_type, Age, Diagnosis) %&gt;%
+  tally()
+tumor_sample &lt;- mergedSamples %&gt;%
+  dplyr::filter(Tumor == TRUE) %&gt;%
+    droplevels()</code></pre>
+<pre class="r"><code>tumor_sample &lt;- tumor_sample %&gt;%
+    dplyr::mutate(
+        Diagnosis = ifelse(
+            str_detect(Diagnosis, &quot;invasive&quot;), 
+            &quot;ILC-like&quot;, &quot;IDC-like&quot;
+        ),
+        Diagnosis = ifelse(
+            patient == &quot;Tumor-8&quot;, 
+            &quot;IDC-like&quot;, 
+            Diagnosis
+        ), 
+        Diagnosis = as.factor(Diagnosis)
+    )</code></pre>
+<pre class="r"><code>treat_cols &lt;- c(
+  Veh = rgb(0.7, 0.7, 0.7),
+  DHT = rgb(0.8, 0.2, 0.2),
+  E2 = rgb(0.2, 0.2, 0.8),
+  `E2+DHT` = rgb(1, 0.4, 1)
+)
+tumor_cols &lt;- hcl.colors(
+  n = length(unique(samples$Tumor)), 
+  palette = &quot;Zissou 1&quot;
+  ) %&gt;%
+  setNames(unique(samples$Tumor))
+patient_cols &lt;- hcl.colors(
+  n = length(levels(mergedSamples$patient)), 
+  palette = &quot;Spectral&quot;
+  ) %&gt;%
+  setNames(levels(mergedSamples$patient))
+diag_cols &lt;- readRDS(&quot;~/GSE800098/output/diag_cols.rds&quot;)</code></pre>
+<pre class="r"><code>treat_shapes &lt;- c(
+  Veh = 1,
+  DHT = 19,
+  E2 = 15,
+  `E2+DHT` = 17
+)</code></pre>
+<pre class="r"><code># counts &lt;- here::here(&quot;data/aligned/counts/counts.out.gz&quot;) %&gt;%
+#   gzfile() %&gt;%
+#   read_tsv(comment = &quot;#&quot;) %&gt;%
+#   dplyr::select(Geneid, ends_with(&quot;bam&quot;)) %&gt;%
+#   rename_at(vars(ends_with(&quot;bam&quot;)), dirname) %&gt;%
+#   rename_all(basename) %&gt;%
+#   column_to_rownames(&quot;Geneid&quot;)</code></pre>
+<pre class="r"><code># mergedCounts &lt;- counts %&gt;%
+#   rownames_to_column(&quot;gene_id&quot;) %&gt;%
+#   pivot_longer(
+#     cols = -gene_id,
+#     names_to = &quot;Filename&quot;,
+#     values_to = &quot;counts&quot;
+#   ) %&gt;%
+#   left_join(samples, by = &quot;Filename&quot;) %&gt;%
+#   group_by(
+#     gene_id, name, patient, treat, Tumor) %&gt;%
+#   summarise(counts = sum(counts), .groups = &quot;drop&quot;) %&gt;%
+#   pivot_wider(
+#     id_cols = gene_id,
+#     values_from = counts,
+#     names_from = name
+#   ) %&gt;%
+#   column_to_rownames(&quot;gene_id&quot;)
+# saveRDS(mergedCounts, here::here(&quot;data/mergedCounts.rds&quot;))
+mergedCounts &lt;- readRDS(here::here(&quot;data/mergedCounts.rds&quot;))</code></pre>
+<pre><code>           used  (Mb) gc trigger  (Mb) limit (Mb) max used  (Mb)
+Ncells 11699233 624.9   17341367 926.2         NA 16445016 878.3
+Vcells 27871322 212.7   46538340 355.1     204800 32177458 245.5</code></pre>
+<p>The filtered and normalised <code>DGEList</code> was loaded in.</p>
+<pre class="r"><code>dge_tumor &lt;- readRDS(here::here(&quot;output/dge_tumor.rds&quot;))</code></pre>
+<pre class="r"><code>cqNorma_tumor &lt;- with(
+  dge_tumor,
+  cqn(
+    counts= counts,
+    x = genes$gc_content,
+    lengths = genes$ave_tx_len
+  )
+)
+dge_tumor$offset &lt;- cqNorma_tumor$glm.offset
+logCPM_tumor &lt;- cqNorma_tumor$y + cqNorma_tumor$offset</code></pre>
+<pre class="r"><code>pcaPost_tumor &lt;- logCPM_tumor %&gt;%
+  t() %&gt;%
+  prcomp() </code></pre>
+<pre class="r"><code>gsTopology &lt;- retrieve_topology(database = &quot;kegg&quot;, species = &quot;hsapiens&quot;)
+logCPM_tumor2 &lt;- logCPM_tumor
+rownames(logCPM_tumor2) &lt;- mapIds(ensDb,rownames(logCPM_tumor), &quot;ENTREZID&quot;, keytype = &quot;GENEID&quot;)
+logCPM_tumor2 &lt;- logCPM_tumor2[!is.na(rownames(logCPM_tumor2)),]
+ssFC_tumor &lt;- sSNAPPY::weight_ss_fc(logCPM_tumor2, tumor_sample, groupBy = &quot;patient&quot;, treatColumn = &quot;treat&quot;, sampleColumn = &quot;name&quot;)
+ssFC_tumor &lt;- ssFC_tumor$weighted_logFC/ssFC_tumor$weight
+weightedFC_tumor &lt;- sSNAPPY::weight_ss_fc(logCPM_tumor2, tumor_sample, groupBy = &quot;patient&quot;, treatColumn = &quot;treat&quot;, sampleColumn = &quot;name&quot;)
+genePertScore_tumor &lt;- raw_gene_pert(weightedFC_tumor$weighted_logFC, gsTopology)</code></pre>
+<pre class="r"><code>formatP &lt;- function(p, m = 0.0001){
+out &lt;- rep(&quot;&quot;, length(p))
+out[p &lt; m] &lt;- sprintf(&quot;%.2e&quot;, p[p&lt;m])
+out[p &gt;= m] &lt;- sprintf(&quot;%.4f&quot;, p[p&gt;=m])
+out
+}</code></pre>
+<p>Outputs of <code>sSNAPPY</code> workflow for tumor samples were read
+in.</p>
+<pre class="r"><code>treat_sig_tumor &lt;- readRDS(here::here(&quot;output/treat_sig_tumor.rds&quot;))
+normalised_tumor &lt;- readRDS(here::here(&quot;output/normalisedScores_tumor.rds&quot;))</code></pre>
+<pre class="r"><code>normalised_tumor_mat &lt;- normalised_tumor %&gt;%
+    dplyr::select(gs_name, sample, robustZ) %&gt;%
+    pivot_wider(
+        names_from = &quot;sample&quot;, 
+        values_from = &quot;robustZ&quot;
+    ) %&gt;%
+    column_to_rownames(&quot;gs_name&quot;)</code></pre>
+<pre class="r"><code>new_diag_col &lt;- qualitative_hcl(2, palette = &quot;Dark 3&quot;) %&gt;%
+    set_names(c(&quot;IDC-like&quot;, &quot;ILC-like&quot;))
+new_treat_col &lt;- qualitative_hcl(4, palette = &quot;Dynamic&quot;) %&gt;%
+    set_names(levels(tumor_sample$treat))</code></pre>
+<pre class="r"><code>ssFC_tumor_df &lt;- ssFC_tumor %&gt;%
+    as.data.frame() %&gt;%
+    rownames_to_column(&quot;entrezid&quot;) %&gt;%
+    mutate(
+        entrezid = str_remove_all(entrezid, &quot;ENTREZID.&quot;)
+    ) %&gt;%
+    left_join(
+        genesGR %&gt;%
+            as.data.frame() %&gt;%
+            unnest(entrezid) %&gt;%
+            mutate(entrezid = as.character(entrezid)) %&gt;%
+            dplyr::select(entrezid, gene_name)
+    ) %&gt;%
+    pivot_longer(
+        cols = contains(&quot;Tumor&quot;), 
+        names_to = &quot;name&quot;, 
+        values_to = &quot;ssFC&quot;
+    ) %&gt;%
+    left_join(
+        tumor_sample
+    ) </code></pre>
+<pre class="r"><code>load(system.file(&quot;extdata&quot;, &quot;entrez2name.rda&quot;, package = &quot;sSNAPPY&quot;))</code></pre>
+<pre class="r"><code>logCPM_tumor_df &lt;- logCPM_tumor %&gt;%
+    as.data.frame() %&gt;%
+    rownames_to_column(&quot;gene_id&quot;) %&gt;%
+    pivot_longer(
+        cols = -&quot;gene_id&quot;, 
+        names_to = &quot;name&quot;, 
+        values_to = &quot;logCPM&quot;
+    ) %&gt;%
+    left_join(
+        tumor_sample
+    ) %&gt;%
+    left_join(
+        dge_tumor$genes %&gt;%
+            dplyr::select(gene_id, gene_name)
+    )</code></pre>
+<pre class="r"><code>normalised_tumor_df &lt;- normalised_tumor %&gt;%
+    dplyr::select(sample, gs_name, robustZ) %&gt;%
+    pivot_wider(
+        names_from = &quot;gs_name&quot;, 
+        values_from = &quot;robustZ&quot;
+    )</code></pre>
+</div>
+</div>
+<div id="e2-response" class="section level1">
+<h1>E2 response</h1>
+<pre class="r"><code>lobular_E2_sample &lt;- tumor_sample %&gt;%
+    ungroup() %&gt;%
+    dplyr::filter(
+        treat == &quot;E2&quot;, 
+        Diagnosis == &quot;ILC-like&quot;
+    ) %&gt;%
+    pull(name)</code></pre>
+<pre class="r"><code>e2_lobular_gs &lt;- treat_sig_tumor %&gt;%
+    dplyr::filter(
+        Comparison ==  &quot;E2_invasive&quot;, 
+        FDR &lt; 0.05) 
+e2_lobular_gs &lt;- pull(e2_lobular_gs, `t statistic`) %&gt;%
+    set_names(e2_lobular_gs$gs_name)</code></pre>
+<p>5 pathways were significantly perturbed by E2 in the lobular-like
+group, forming 2 main communities.</p>
+<pre class="r"><code>set.seed(123)
+treat_sig_tumor %&gt;%
+    dplyr::filter(
+        Comparison == &quot;E2_invasive&quot;, 
+        FDR &lt; 0.05
+    ) %&gt;%
+    mutate(Status = ifelse(`t statistic` &lt; 0, &quot;Inhibited&quot;, &quot;Activated&quot;)) %&gt;%
+    plot_community(
+        gsTopology = gsTopology, 
+        colorBy = &quot;Status&quot;, 
+        layout = &quot;kk&quot;,
+        communityMethod = &quot;leiden&quot;
+    ) +
+    scale_color_manual(
+        values = c(&quot;Inhibited&quot; = &quot;navyblue&quot;, &quot;Activated&quot; = &quot;darkred&quot;),
+         name = &quot;Pathway Status&quot;
+    ) +
+    scale_fill_discrete_divergingx(palette = &quot;Fall&quot;) +
+    theme(
+        panel.border  = element_blank(), 
+        legend.key.size = unit(10, &quot;mm&quot;), 
+        legend.text = element_text(size = 9),
+        legend.title = element_text(size = 11),
+        legend.margin=margin(0,0,0,0)
+        # legend.position = &quot;top&quot;, 
+        # legend.justification = &quot;right&quot;
+    )</code></pre>
+<div class="figure" style="text-align: center">
+<img src="figure/E2_signal.Rmd/unnamed-chunk-12-1.png" alt="*A network of KEGG pathways significantly perturbed by E2 lobular-like PDEs.*" width="960" />
+<p class="caption">
+<em>A network of KEGG pathways significantly perturbed by E2
+lobular-like PDEs.</em>
+</p>
+</div>
+<div id="cell-cycle" class="section level2">
+<h2>Cell Cycle</h2>
+<p>11 key genes potentially driving the activation of the Cell cycle
+pathway were identified, among which genes PLK1 and CDK1 played the most
+important roles (i.e. highest mean gene-wise perturbation scores). Both
+PLK1 (Polo-like kinase 1) and CDK1 (Cyclin-dependent kinase 1) are
+essential regulatory proteins involved in promoting cell cycle
+progression, and the dysregulation of these two genes has been linked to
+BC tumour growth.</p>
+<pre class="r"><code>CC_genePert &lt;-  genePertScore_tumor$`kegg.Cell cycle`
+CC_path &lt;- normalised_tumor_mat %&gt;%
+    .[&quot;kegg.Cell cycle&quot;, colnames(.) %in% lobular_E2_sample]
+CC_gene &lt;- CC_genePert %&gt;%
+        .[, colnames(.) %in% lobular_E2_sample] %&gt;%
+    .[apply(., 1, function(x){sum(sign(x)) %in% c(-4, 4)}),] %&gt;%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(CC_path)))}) %&gt;%
+        .[!is.na(.)] %&gt;%
+        .[. &gt; 0.6] %&gt;%
+    names()</code></pre>
+<pre class="r"><code>anno_df_CC &lt;- normalised_tumor_df   %&gt;%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Cell cycle`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %&gt;%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    CC_genePert %&gt;%
+        .[rownames(.) %in% CC_gene, colnames(.) %in% lobular_E2_sample],
+    annotation_df = anno_df_CC, 
+    mapEntrezID = entrez2name, 
+    topGene = length(CC_gene),
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_CC$`Z Range`))),
+            levels(anno_df_CC$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)), 
+    breaks = seq(-0.001, 0.001, length.out = 100), 
+    cutree_rows = 2
+    ) </code></pre>
+<div class="figure" style="text-align: center">
+<img src="figure/E2_signal.Rmd/unnamed-chunk-14-1.png" alt="*Gene-wise perturbation scores of the 11 key Cell cycle pathway genes potentially driving the activation of the pathway in E2-treated ILC-like tumours, where the columns are annotated with pathway-level perturbation scores.*" width="960" />
+<p class="caption">
+<em>Gene-wise perturbation scores of the 11 key Cell cycle pathway genes
+potentially driving the activation of the pathway in E2-treated ILC-like
+tumours, where the columns are annotated with pathway-level perturbation
+scores.</em>
+</p>
+</div>
+<p>Although not statistically significant in the DE analyses, the median
+single-sample logFC (ssFC) of <em>PLK1</em> and <em>CDK1</em> was
+positive in both IDC- and ILC-like tumours after the E2 treatment. But
+the magnitudes of increase in expression were greater in ILC-like
+tumours.</p>
+<pre class="r"><code>CC_gene_name &lt;- entrez2name %&gt;%
+    dplyr::filter(
+        entrezid %in% CC_gene
+    ) %&gt;%
+    pull(mapTo)
+CC_box &lt;- ssFC_tumor_df %&gt;%
+    dplyr::filter(
+        gene_name %in% c(&quot;PLK1&quot;, &quot;CDK1&quot;), 
+        treat == &quot;E2&quot;
+        ) %&gt;%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = &quot;free_y&quot;) +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = &quot;Predicted\nsubtype&quot;
+    ) +
+    geom_hline(yintercept = 0, color = &quot;red&quot;, linetype = &quot;dashed&quot;) +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = &quot;ssFC&quot;,
+        x = &quot;&quot;)
+CC_box</code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-15-1.png" width="960" style="display: block; margin: auto;" /></p>
+</div>
+<div id="apoptosis" class="section level2">
+<h2>Apoptosis</h2>
+<p>Using the same strategy, 5 potential candidates (CHUK, FADD, IL3RA,
+MAPK9, and TNFRSF10B ) driving the inhibition of the Apoptosis pathway
+in ILC-like tumours uponER activation were selected. All 5 genes had
+negative median ssFC in E2-treated ILC-like tumours, while the median
+ssFC of gene CHUK and IL3RA are positive in IDC-like tumours post E2
+treatment.</p>
+<pre class="r"><code>Apop_genePert &lt;-  genePertScore_tumor$`kegg.Apoptosis`
+Apop_path &lt;- normalised_tumor_mat %&gt;%
+    .[&quot;kegg.Apoptosis&quot;, colnames(.) %in% lobular_E2_sample]
+Apop_gene &lt;- Apop_genePert %&gt;%
+        .[, colnames(.) %in% lobular_E2_sample] %&gt;%
+    .[apply(., 1, function(x){sum(sign(x)) %in% c(-4, 4)}),] %&gt;%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(Apop_path)))}) %&gt;%
+        .[!is.na(.)] %&gt;%
+        .[. &gt; 0.6] %&gt;%
+    names()</code></pre>
+<pre class="r"><code>anno_df_Apop &lt;- normalised_tumor_df   %&gt;%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Apoptosis`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %&gt;%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    Apop_genePert %&gt;%
+        .[rownames(.) %in% Apop_gene, colnames(.) %in% lobular_E2_sample],
+    filterBy = &quot;max.abs&quot;, 
+    annotation_df = anno_df_Apop, 
+    mapEntrezID = entrez2name, 
+    topGene = 10,
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_Apop$`Z Range`))),
+            levels(anno_df_Apop$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)), 
+    breaks = seq(-8.526216e-05, 8.526216e-05, length.out = 100)
+    ) </code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-17-1.png" width="960" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>Apop_gene_name &lt;- entrez2name %&gt;%
+    dplyr::filter(
+        entrezid %in% Apop_gene
+    ) %&gt;%
+    pull(mapTo)
+apop_box &lt;- ssFC_tumor_df %&gt;%
+    dplyr::filter(
+        gene_name %in% setdiff(Apop_gene_name, &quot;MAPK8&quot;), 
+        treat == &quot;E2&quot;
+        ) %&gt;%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = &quot;free_y&quot;) +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = &quot;Predicted\nsubtype&quot;
+    ) +
+    geom_hline(yintercept = 0, color = &quot;red&quot;, linetype = &quot;dashed&quot;) +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = &quot;ssFC&quot;,
+        x = &quot;&quot;)
+apop_box</code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-18-1.png" width="960" style="display: block; margin: auto;" /></p>
+</div>
+<div id="jak-stat-signaling-pathway" class="section level2">
+<h2>JAK-STAT signaling pathway</h2>
+<p>In addition to the two cell death-related pathways, the three other
+pathways that were inhibited in E2-treated ILC-like tumours were related
+to signal transduction. Firstly, the JAK-STAT signalling pathway, a
+crucial intracellular signalling cascade that influences diverse
+cellular processes such as proliferation, differentiation, and immune
+responses, was predicted to be inhibited. Since the KEGG JAK-STAT
+signalling pathway involves various processes, to elucidate the
+biological meaning of the observed inhibition, the functional roles of
+pathway genes making the largest contribution to the altered pathway
+activity were inspected. 6 genes with negative gene-wise perturbation
+scores across all E2-treated lobular-like samples that are potentially
+the main drivers behind the inhibition of the JAK-STAT pathway were
+selected.</p>
+<pre class="r"><code>JAK_genePert &lt;-  genePertScore_tumor$`kegg.JAK-STAT signaling pathway`
+JAR_path &lt;- normalised_tumor_mat %&gt;%
+    .[&quot;kegg.JAK-STAT signaling pathway&quot;, colnames(.) %in% lobular_E2_sample]
+JAR_gene &lt;- JAK_genePert %&gt;%
+        .[, colnames(.) %in% lobular_E2_sample] %&gt;%
+    .[apply(., 1, function(x){sum(sign(x)) %in% c(-4, 4)}),] %&gt;%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(JAR_path)))}) %&gt;%
+        .[!is.na(.)] %&gt;%
+        .[. &gt; 0.6] %&gt;%
+    names()</code></pre>
+<p>While many of the identified driver genes are involved in the
+upstream cytokine-cytokine receptor interaction processes, the cell
+cycle inhibitor gene <em>CDKN1A</em> (also known as p21 ) was also on
+the list. Although not statistically significant, the median ssFC of
+<em>CDKN1A</em> was negative in both groups of E2-treated tumours,
+indicating potential down-regulation of this cell cycle inhibitor gene
+upon the E2 treatment. Therefore, the inhibition of the JAK-STAT pathway
+likely reflects the down-regulation of the cell cycle inhibition
+process, aligning with the observed activation of the Cell cycle and
+inhibition of the Apoptosis pathway.</p>
+<pre class="r"><code>anno_df_jak &lt;- normalised_tumor_df   %&gt;%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.JAK-STAT signaling pathway`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %&gt;%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    JAK_genePert %&gt;%
+        .[rownames(.) %in% JAR_gene, colnames(.) %in% lobular_E2_sample],
+    filterBy = &quot;max.abs&quot;, 
+    annotation_df = anno_df_jak, 
+    mapEntrezID = entrez2name, 
+    topGene = 10,
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_jak$`Z Range`))),
+            levels(anno_df_jak$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)), 
+    breaks = seq(-0.00003, 0.00003, length.out = 100)
+    ) </code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-20-1.png" width="960" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># pathview(gene.data  =  ssFC_tumor %&gt;%
+#              .[rownames(.) %in% JAR_gene, colnames(.) %in% lobular_E2_sample] %&gt;%
+#              apply(., 1, median) %&gt;%
+#              set_names(
+#                  str_remove_all(
+#                      names(.), &quot;ENTREZID:&quot;
+#                  )
+#              ),
+#          pathway.id = &quot;04630&quot;,
+#          species    = &quot;hsa&quot;,
+#          kegg.dir = here::here(&quot;figure/&quot;),
+#          low = list(gene =&quot;skyblue&quot;, cpd = &quot;black&quot;),
+#          mid = list(gene =&quot;grey&quot;, cpd = &quot;black&quot;),
+#          high = list(gene =&quot;red&quot;, cpd = &quot;black&quot;),
+#          )
+knitr::include_graphics(
+    &quot;/Users/wenjunliu/20131906_HickeyT_JC_NormalBreast/pathview_figure/JAKSAT.png&quot;, 
+    error = FALSE
+)</code></pre>
+<p><img src="../../20131906_HickeyT_JC_NormalBreast/pathview_figure/JAKSAT.png" width="538" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>CDKN1A_box &lt;- ssFC_tumor_df %&gt;%
+    dplyr::filter(
+        gene_name == &quot;CDKN1A&quot;, 
+        treat == &quot;E2&quot;
+        ) %&gt;%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = &quot;free_y&quot;) +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = &quot;Predicted\nsubtype&quot;
+    ) +
+    geom_hline(yintercept = 0, color = &quot;red&quot;, linetype = &quot;dashed&quot;) +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = &quot;ssFC&quot;,
+        x = &quot;&quot;)
+CDKN1A_box</code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-22-1.png" width="480" style="display: block; margin: auto;" /></p>
+</div>
+<div id="wnt-signaling" class="section level2">
+<h2>WNT signaling</h2>
+<p>We inspected the main driver genes behind the inhibition of the WNT
+signalling pathway in our E2-treated ILC-like tumours and found the
+involvement of three WNT family genes (<em>WNT2B, WNT9A</em>, and
+<em>WNT7B</em>).</p>
+<pre class="r"><code>WNT_genePert &lt;-  genePertScore_tumor$`kegg.Wnt signaling pathway`
+WNT_path &lt;- normalised_tumor_mat %&gt;%
+    .[&quot;kegg.Wnt signaling pathway&quot;, colnames(.) %in% lobular_E2_sample]
+WNT_gene &lt;- WNT_genePert %&gt;%
+        .[, colnames(.) %in% lobular_E2_sample] %&gt;%
+    .[apply(., 1, function(x){sum(sign(x)) %in% c(-4, 4)}),] %&gt;%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(WNT_path)))}) %&gt;%
+        .[!is.na(.)] %&gt;%
+        .[. &gt; 0.6] %&gt;%
+    names()
+WNT_gene &lt;- intersect(WNT_gene, rownames(ssFC_tumor))</code></pre>
+<pre class="r"><code>anno_df_WNT &lt;- normalised_tumor_df   %&gt;%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Wnt signaling pathway`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %&gt;%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    WNT_genePert %&gt;%
+        .[rownames(.) %in% WNT_gene, colnames(.) %in% lobular_E2_sample],
+    filterBy = &quot;mean&quot;, 
+    annotation_df = anno_df_WNT, 
+    mapEntrezID = entrez2name, 
+    topGene = 10,
+    annotation_colors = list(
+        `Z Range` = setNames(
+            colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_WNT$`Z Range`))),
+            levels(anno_df_WNT$`Z Range`)
+        )), 
+    clustering_method = &quot;average&quot;,
+    color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)), 
+    breaks = seq(-0.00003, 0.00003, length.out = 100)
+    ) </code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-24-1.png" width="960" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>wnt_complex &lt;- entrez2name %&gt;%
+    dplyr::filter(
+        entrezid %in% WNT_gene, 
+        str_detect(mapTo, &quot;WNT&quot;)
+    ) %&gt;%
+    pull(mapTo)
+wnt_box &lt;- ssFC_tumor_df %&gt;%
+    dplyr::filter(
+        gene_name %in% c(wnt_complex, &quot;WNT4&quot;), 
+        treat == &quot;E2&quot;
+        ) %&gt;%
+    mutate(
+        gene_name = factor(gene_name, levels = c(&quot;WNT2B&quot; ,&quot;WNT7B&quot;, &quot;WNT9A&quot;, &quot;WNT4&quot;))) %&gt;%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = &quot;free_y&quot;) +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = &quot;Predicted\nsubtype&quot;
+    ) +
+    scale_alpha_manual(name = &quot;Subtype&quot;, values = c(.3, 1), 
+                       guide = FALSE) +
+    geom_hline(yintercept = 0, color = &quot;red&quot;, linetype = &quot;dashed&quot;) +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = &quot;ssFC&quot;,
+        x = &quot;&quot;)
+wnt_box</code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-25-1.png" width="960" style="display: block; margin: auto;" /></p>
+</div>
+<div id="hif-signalling-pathway" class="section level2">
+<h2>HIF signalling pathway</h2>
+<p>Lastly, the HIF-1 signalling pathway was also significantly inhibited
+in ILC-like tumours as a response to ER activation. The two potential
+driver genes found for the HIF-1 signalling pathway are <em>AKT3</em>
+and <em>MKNK1</em>.</p>
+<pre class="r"><code>HIF_genePert &lt;-  genePertScore_tumor$`kegg.HIF-1 signaling pathway`
+HIF_path &lt;- normalised_tumor_mat %&gt;%
+    .[&quot;kegg.HIF-1 signaling pathway&quot;, colnames(.) %in% lobular_E2_sample]
+HIF_gene &lt;- HIF_genePert %&gt;%
+        .[, colnames(.) %in% lobular_E2_sample] %&gt;%
+    .[apply(., 1, function(x){sum(sign(x)) == -4}),] %&gt;%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(HIF_path)))}) %&gt;%
+        .[!is.na(.)] %&gt;%
+        .[. &gt; 0.6] %&gt;%
+    names()
+HIF_gene &lt;- intersect(HIF_gene, rownames(ssFC_tumor))</code></pre>
+<pre class="r"><code>anno_df_HIF &lt;- normalised_tumor_df   %&gt;%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.HIF-1 signaling pathway`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %&gt;%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    HIF_genePert %&gt;%
+        .[rownames(.) %in% HIF_gene, colnames(.) %in% lobular_E2_sample],
+    filterBy = &quot;mean&quot;, 
+    annotation_df = anno_df_WNT, 
+    mapEntrezID = entrez2name, 
+    topGene = 10,
+    annotation_colors = list(
+        `Z Range` = setNames(
+            colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_HIF$`Z Range`))),
+            levels(anno_df_HIF$`Z Range`)
+        )), 
+    clustering_method = &quot;average&quot;,
+    color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)), 
+    breaks = seq(-0.00003, 0.00003, length.out = 100)
+    ) </code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-27-1.png" width="960" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>HIF_gene_name &lt;- entrez2name %&gt;%
+    dplyr::filter(
+        entrezid %in% HIF_gene
+    ) %&gt;%
+    pull(mapTo)
+hif_box &lt;- ssFC_tumor_df %&gt;%
+    dplyr::filter(
+        gene_name %in% HIF_gene_name, 
+        treat == &quot;E2&quot;
+        ) %&gt;%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = &quot;free_y&quot;) +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = &quot;Predicted\nsubtype&quot;
+    ) +
+    geom_hline(yintercept = 0, color = &quot;red&quot;, linetype = &quot;dashed&quot;) +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = &quot;ssFC&quot;,
+        x = &quot;&quot;)
+hif_box</code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-28-1.png" width="960" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="compare-to-public-data" class="section level1">
+<h1>Compare to Public Data</h1>
+<div id="sikora-et-al.-ilc-specific-e2-responses"
+class="section level2">
+<h2>Sikora et al. ILC-specific E2 responses</h2>
+<pre class="r"><code>library(readxl)
+ILC_E2_public_full &lt;- read_excel(
+        here::here(&quot;data/Sikora_ILC_E2_sig.xlsx&quot;), 
+        sheet = 6
+    ) %&gt;%
+    dplyr::rename(
+        gene_name = `Gene Symbol`
+    ) %&gt;%
+    left_join(
+        genesGR %&gt;%
+            as.data.frame() %&gt;%
+            dplyr::select(gene_id, gene_name)
+    ) %&gt;%
+    drop_na() </code></pre>
+<p>In <a
+href="https://aacrjournals.org/cancerres/article/74/5/1463/599347/Invasive-Lobular-Carcinoma-Cell-Lines-Are"><em>Invasive
+Lobular Carcinoma Cell Lines Are Characterized by Unique
+Estrogen-Mediated Gene Expression Patterns and Altered Tamoxifen
+Response</em></a>, ILC cell lines MM134 and SUM44 were treated with 1
+nmol/L E2 for 3 or 24 hours, prior to microarray was performed. DEGs
+derived from those two cell lines were compared against public data for
+three ER-pos IDC cell lines, and a list of ILC-specific DEGs were
+found.</p>
+<pre class="r"><code># require(GEOquery)
+# require(Biobase)
+# library(biomaRt)
+# gset &lt;- getGEO(&quot;GSE50693&quot;, GSEMatrix =TRUE, getGPL=FALSE)
+# gset &lt;- gset[[1]]
+# mart &lt;- useMart(&quot;ENSEMBL_MART_ENSEMBL&quot;)
+# mart &lt;- useDataset(&quot;hsapiens_gene_ensembl&quot;, mart)
+# total_range &lt;- seq_len(nrow(exprs(gset)))
+# sequence_size &lt;- length(total_range) / 8
+# # Use the split function to break the sequence into 8 smaller sequences
+# smaller_sequences &lt;- split(total_range, rep(1:8, each = sequence_size, length.out = length(total_range)))
+# library(BiocParallel)
+# param &lt;- SnowParam(
+#     workers = 8, 
+#     type = &quot;SOCK&quot;
+# )
+# annotLookup &lt;- lapply(smaller_sequences, function(x){
+#     getBM(
+#         mart=mart,
+#         attributes=c(
+#             &quot;affy_hg_u133a_2&quot;,
+#             &quot;external_gene_name&quot;),
+#         filter = &quot;affy_hg_u133a_2&quot;,
+#         values = rownames(exprs(gset))[x], uniqueRows=TRUE)
+# })
+# annotLookup &lt;- bind_rows(annotLookup)
+# saveRDS(annotLookup, file = here::here(&quot;data/affy_to_name.rds&quot;))
+annotLookup &lt;- readRDS(here::here(&quot;data/affy_to_name.rds&quot;))
+allGENE &lt;- annotLookup %&gt;% pull(external_gene_name) %&gt;% unique()</code></pre>
+<p><code>GOseq</code> was used to perform an over-representation
+analysis on those ILC-specific E2-regulated genes. Since only
+differentially expressed genes were provided in the supplementary table,
+the background gene-set was derived by: 1. Retrieve the series matrix
+file from GEO using <code>getGEO()</code>. 2. Match the U133A 2.0 array
+probe annotations to ensembl gene names using <code>biomaRt</code>’s
+<code>getBM()</code> function.</p>
+<p>14154 genes were considered to be the background gene.</p>
+<div id="ora-with-goseq" class="section level5">
+<h5>ORA with <code>GOseq</code></h5>
+<p><code>GOseq</code> was used to test for enrichment of KEGG pathways
+using the hypergeometric method. But none of the pathway passed the FDR
+&lt; 0.05 significance threshold.</p>
+<pre class="r"><code>gsTokeep &lt;- readRDS(here::here(&quot;output/kg_gsTokeep.rds&quot;))
+kg &lt;- sapply(gsTopology, rownames) %&gt;%
+    do.call(cbind, .) %&gt;%
+    as.data.frame() %&gt;%
+    pivot_longer(
+        cols = everything(),
+        names_to = &quot;gs_name&quot;,
+        values_to = &quot;entrezid&quot;
+    ) %&gt;%
+    dplyr::filter(gs_name %in% gsTokeep) %&gt;%
+    left_join(
+        entrez2name %&gt;%
+            dplyr::rename(gene_name = mapTo)
+    ) %&gt;%
+    left_join(genesGR %&gt;%
+                  as.data.frame() %&gt;%
+                  dplyr::select(gene_name, gene_id)) %&gt;%
+    unique() %&gt;%
+    dplyr::select(-entrezid)
+kgByGene &lt;- kg %&gt;%
+    split(f = .$gene_id) %&gt;%
+    lapply(pull, gs_name)
+kgByGS &lt;- kg %&gt;%
+    split(f = .$gs_name) %&gt;%
+    lapply(pull, gene_id)</code></pre>
+<pre class="r"><code>library(goseq)
+pwf &lt;- genesGR %&gt;%
+    as.data.frame() %&gt;%
+    distinct(gene_id, .keep_all = TRUE) %&gt;%
+    dplyr::select(gene_id, ave_tx_len) %&gt;%
+    mutate(Status = case_when(gene_id %in% ILC_E2_public_full$gene_id  ~ 1, !gene_id %in% ILC_E2_public_full$gene_id   ~ 0)) %&gt;%
+    with(
+      nullp(
+        DEgenes = structure(
+          Status, names = gene_id
+        ),
+        genome = &quot;GRCh38.p16&quot;,
+        id = &quot;ensGene&quot;,
+        bias.data =ave_tx_len,
+        plot.fit = FALSE
+      )
+    )
+goseq &lt;- goseq(
+               gene2cat = kgByGene, 
+               pwf = pwf,
+               method =  &quot;Hypergeometric&quot;) %&gt;%
+  as_tibble() %&gt;%
+  dplyr::filter(numDEInCat &gt; 0) %&gt;%
+  mutate(
+    FDR_over = p.adjust(over_represented_pvalue, method = &quot;fdr&quot;),
+    FDR_under = p.adjust(under_represented_pvalue, method = &quot;fdr&quot;)
+  ) %&gt;%
+  dplyr::rename(
+    gs_name = category,
+    nDE = numDEInCat,
+    nExpressed = numInCat
+  ) %&gt;%
+  left_join(kg) %&gt;%
+  dplyr::select(
+    gs_name, nExpressed, nDE,
+    contains(&quot;pvalue&quot;),
+    contains(&quot;FDR&quot;),
+    gene_name, gene_id
+  ) %&gt;%
+  dplyr::filter(
+    gene_id %in% ILC_E2_public_full$gene_id
+  ) %&gt;%
+  chop(c(&quot;gene_name&quot;, &quot;gene_id&quot;)) %&gt;%
+  mutate(
+    gene_name = vapply(.$gene_name, function(x){
+      paste(x,collapse = &quot;; &quot;)
+    }, character(1)),
+    gene_id = vapply(.$gene_id, function(x){
+      paste(x,collapse = &quot;; &quot;)
+    }, character(1))
+  ) %&gt;%
+  dplyr::rename(DE = gene_name) %&gt;%
+  mutate_at(
+    vars(contains(c(&quot;pvalue&quot;, &quot;FDR&quot;))),
+    formatP)</code></pre>
+<p>4 pathways passed the FDR cut-off of 0.05 to be considered as
+significantly enriched but none of the significantly perturbed pathways
+we detected in E2-treated ILC-like tumours is on the list.</p>
+<pre class="r"><code>goseq %&gt;% 
+    dplyr::filter(FDR_over &lt; 0.05)  %&gt;%
+    mutate(
+        gs_name = str_remove_all(gs_name, &quot;kegg.&quot;)
+    ) %&gt;%
+    dplyr::select(-contains(c(&quot;under&quot;, &quot;DE&quot;, &quot;gene_id&quot;))) %&gt;%
+    mutate_all(as.factor) %&gt;%
+    datatable(
+        filter = &quot;top&quot;, 
+        options = list(scrollY = &#39;350px&#39;)
+    )</code></pre>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-7598595affc4f25ab85b" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-7598595affc4f25ab85b">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td><\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;Choline metabolism in cancer&quot;,&quot;Estrogen signaling pathway&quot;,&quot;GnRH secretion&quot;,&quot;Huntington disease&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;75&quot;,&quot;109&quot;,&quot;159&quot;,&quot;167&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;0.0003&quot;,&quot;0.0004&quot;,&quot;0.0005&quot;,&quot;8.72e-07&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;0.0002&quot;,&quot;0.0238&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["1","2","3","4"],["GnRH secretion","Estrogen signaling pathway","Choline metabolism in cancer","Huntington disease"],["75","167","109","159"],["8.72e-07","0.0003","0.0004","0.0005"],["0.0002","0.0238","0.0238","0.0238"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>gs_name<\/th>\n      <th>nExpressed<\/th>\n      <th>over_represented_pvalue<\/th>\n      <th>FDR_over<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"scrollY":"350px","columnDefs":[{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true},"selection":{"mode":"multiple","selected":null,"target":"row","selectable":null}},"evals":[],"jsHooks":[]}</script>
+<pre class="r"><code>ILC_E2_public &lt;- read_delim(here::here(&quot;data/ILC_E2_genes.txt&quot;), col_names = FALSE) %&gt;%
+    set_colnames(c(&quot;gene_name&quot;, &quot;type&quot;)) %&gt;%
+    left_join(
+        genesGR %&gt;%
+            as.data.frame() %&gt;%
+            dplyr::select(gene_name, gene_id)
+    )
+ILC_E2_public_ls &lt;- ILC_E2_public %&gt;% 
+    split(f = .$type)</code></pre>
+<pre class="r"><code>e2_lobular_gs_public &lt;- kg %&gt;%
+    dplyr::filter(
+        gs_name %in% names(e2_lobular_gs)) %&gt;%
+    # dplyr::filter(gene_name %in% ILC_E2_public_full$gene_name)
+    left_join(ILC_E2_public)  %&gt;%
+    drop_na() %&gt;%
+    mutate(
+        gs_name = str_remove_all(gs_name, &quot;kegg.&quot;), 
+        color = ifelse(type == &quot;ILC-down&quot;, &quot;lightskyblue&quot;, &quot;pink&quot;), 
+        type = as.factor(type)) %&gt;%
+    .[order(.$type), ]%&gt;%
+    mutate(gene_name = as.factor(gene_name))</code></pre>
+<p>The author curated the most induced and repressed ILC-specific
+E2-regulated genes into an ILC-E2 gene-set. (Note that the ILC-specific
+genes were derived by intersecting ILC DEGs with IDC DEGs without
+considering the directionality). There were a total of 93 genes in the
+list, where 57 were uniquely down-regulated by E2 in the ILC cell lines
+and 36 were up-regulated.</p>
+<pre class="r"><code>useless_p &lt;- e2_lobular_gs_public %&gt;%
+    mutate(
+        color = ifelse(
+            color == &quot;lightskyblue&quot;, &quot;Down-regulated&quot;, &quot;Up-regulated&quot;
+        )
+    ) %&gt;%
+    ggplot(
+        aes(type, gs_name, fill = color)
+    ) +
+    geom_tile() +
+    scale_fill_manual(
+        values = c(
+            &quot;Down-regulated&quot; = &quot;lightskyblue&quot;, 
+            &quot;Up-regulated&quot; = &quot;pink&quot;
+        ), 
+        name = &quot;Direction of\nE2-regulation in\nILC-cell lines&quot;
+    )
+ILC_e2_both &lt;- c(&quot;CDKN1C&quot;, &quot;CXXC4&quot;,&quot;WNT4&quot;)</code></pre>
+<p>3 of the public ILC-specific E2-responsive genes (<em>CDKN1C,
+CXXC4</em> and <em>WNT4</em>) were found to be involved in pathways
+significantly perturbed in our cohort of E2-treated ILC-like tumours and
+had directional concordant changes in expression.</p>
+<pre class="r"><code>col &lt;- e2_lobular_gs_public %&gt;%
+    dplyr::select(gene_name, color) %&gt;%
+    unique() %&gt;%
+    .[order(.$gene_name),] %&gt;%
+    pull(color)
+library(ggh4x)
+strips &lt;- strip_themed(
+    background_x = elem_list_rect(
+        fill = adjustcolor(col, alpha.f = 0.5)
+    )
+)
+p1 &lt;- ssFC_tumor_df %&gt;%
+    dplyr::filter(
+        gene_name %in% ILC_e2_both,
+        treat == &quot;E2&quot;
+        ) %&gt;%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap2(.~gene_name, 
+               scales = &quot;free_y&quot;, 
+               strip = strips) +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = &quot;Predicted\nsubtype&quot;
+    ) +
+    scale_alpha_manual(name = &quot;Subtype&quot;, values = c(.3, 1), 
+                       guide = FALSE) +
+    geom_hline(yintercept = 0, color = &quot;red&quot;, linetype = &quot;dashed&quot;) +
+    theme(
+        strip.text = element_text(size = 18), 
+        axis.text.x = element_text(size = 15, 
+                                   colour = new_diag_col)
+    ) +
+    xlab(&quot;Predicted Subtype&quot;) 
+plot_grid(
+    p1, get_legend(useless_p), 
+    rel_widths = c(9,1)
+)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="figure/E2_signal.Rmd/unnamed-chunk-36-1.png" alt="*Single-sample logFCs of E2-treated samples for genes that were involved in significant pathway perturbation among ILC-like tumours and were chosen as ILC-specific E2-regulated genes in a public study. Background colors of the gene name strips indicate the directions of changes upon E2 treatment reported in the public data, where blue means E2-repressed and red means E2-induced.*" width="960" />
+<p class="caption">
+<em>Single-sample logFCs of E2-treated samples for genes that were
+involved in significant pathway perturbation among ILC-like tumours and
+were chosen as ILC-specific E2-regulated genes in a public study.
+Background colors of the gene name strips indicate the directions of
+changes upon E2 treatment reported in the public data, where blue means
+E2-repressed and red means E2-induced.</em>
+</p>
+</div>
+</div>
+</div>
+<div id="nardone-et-al.-foxa1-ilc-targets" class="section level2">
+<h2>Nardone et al. FOXA1-ILC targets</h2>
+<p>Nardone et al. recently performed a comprehensive epigenome profiling
+study to compare ILC tumours against IDC and revealed enhanced
+recruitment of FOXA1, an important regulator of both ER and AR chromatin
+binding, in ILC. FOXA1 -ER interactions that lead to enhanced tumour
+progression and unfavourable outcomes were found to be unique to ILC
+tumours. 59 ILC-specific estrogen-induced FOXA1-targets that were
+reported by Nardone et al. are involved in pathways that were
+significantly perturbed by E2 in our ILC-like tumours, including one of
+the potential inhibitors of the Apoptosis pathway <em>FADD</em>.</p>
+<pre class="r"><code>FOXA1_ILC &lt;- read_csv(here::here(&quot;data/FOXA1_ILC.csv&quot;)) %&gt;%
+    dplyr::filter(pvalue &lt; 0.05)
+nardone_toPlot &lt;- treat_sig_tumor %&gt;%
+    dplyr::filter(
+        Comparison == &quot;E2_invasive&quot;, 
+        FDR &lt; 0.05
+    ) %&gt;%
+    left_join(kg) %&gt;%
+    dplyr::filter(gene_name %in% FOXA1_ILC$gene_name) %&gt;%
+    mutate(gs_name = str_remove_all(gs_name, &quot;kegg.&quot;)) %&gt;%
+    dplyr::select(gene_name, gs_name) %&gt;%
+    unique() %&gt;%
+    left_join(
+        entrez2name %&gt;%
+            dplyr::rename(gene_name = mapTo)
+    ) %&gt;%
+    pull(entrezid)
+lobular_e2_fc &lt;- ssFC_tumor %&gt;%
+    .[, colnames(.) %in% lobular_E2_sample] %&gt;%
+    apply(1, median)
+lobular_e2_fcDir &lt;- ifelse(lobular_e2_fc &lt; 0, &quot;Down-regulated&quot;, &quot;Up-regualted&quot;)</code></pre>
+<pre class="r"><code># all_drive &lt;- c(CC_gene, Apop_gene, JAR_gene, WNT_gene, HIF_gene)
+# intersect(all_drive, nardone_toPlot)</code></pre>
+<pre class="r"><code>g &lt;- treat_sig_tumor %&gt;%
+    dplyr::filter(
+        Comparison == &quot;E2_invasive&quot;, 
+        FDR &lt; 0.05
+    ) %&gt;%
+    mutate(Status = ifelse(`t statistic` &lt; 0, &quot;Inhibited&quot;, &quot;Activated&quot;)) %&gt;%
+    plot_gs2gene(
+        gsTopology = gsTopology, 
+        colorGsBy = &quot;Status&quot;, 
+        mapEntrezID = entrez2name,
+        layout = &quot;kk&quot;,
+        geneFC = lobular_e2_fcDir[nardone_toPlot], 
+        gsNameSize = 4, 
+        gsNodeSize = 6, 
+        geneNameSize = 3, 
+        filterGeneBy = 0,
+    ) +
+    scale_fill_manual(values = c(&quot;darkred&quot;, &quot;lightskyblue&quot;), name = &quot;Pathway&quot;) +
+    scale_colour_manual(values = c(&quot;blue&quot;, &quot;red&quot;), name = &quot;Gene\nDirection&quot;) +
+    theme(panel.border = element_blank(),
+        legend.margin=margin(0,0,0,0))
+g</code></pre>
+<p><img src="figure/E2_signal.Rmd/unnamed-chunk-39-1.png" width="1344" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="thesis-figure" class="section level1">
+<h1>Thesis Figure</h1>
+<div id="cell-death" class="section level2">
+<h2>Cell Death</h2>
+<pre class="r"><code># p1 &lt;- plot_gene_contribution(
+#     CC_genePert %&gt;%
+#         .[rownames(.) %in% CC_gene, colnames(.) %in% lobular_E2_sample],
+#     annotation_df = anno_df_CC, 
+#     mapEntrezID = entrez2name, 
+#     topGene = length(CC_gene),
+#     annotation_colors = list(
+#        
+#         `Z Range` = setNames(
+#             colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_CC$`Z Range`))),
+#             levels(anno_df_CC$`Z Range`)
+#         )), 
+#     color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)), 
+#     breaks = seq(-0.001, 0.001, length.out = 100), 
+#     cutree_rows = 2
+#     )  %&gt;%
+#     as.ggplot()
+# p2 &lt;- CC_box
+# cell_death &lt;- (( p1 | p2) +
+#                   plot_layout(widths = c(0.4, 0.2))) +
+#     plot_annotation(tag_levels = &quot;A&quot;)  &amp;
+#     theme(
+#         plot.tag = element_text(size = 22, face = &quot;bold&quot; ), 
+#         text = element_text(size = 14)
+#     )
+# # png(
+# #     &quot;/Users/wenjunliu/PhD_thesis/Images/chapter_04/cell_death.png&quot;,
+# #     width = 320, height =150, units=&#39;mm&#39;, res = 300
+# # )
+# # cell_death
+# # dev.off()</code></pre>
+<pre class="r"><code># p3 &lt;- plot_gene_contribution(
+#     Apop_genePert %&gt;%
+#         .[rownames(.) %in% Apop_gene, colnames(.) %in% lobular_E2_sample],
+#     filterBy = &quot;max.abs&quot;,
+#     annotation_df = anno_df_Apop,
+#     mapEntrezID = entrez2name,
+#     topGene = 10,
+#     annotation_colors = list(
+# 
+#         `Z Range` = setNames(
+#             colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_Apop$`Z Range`))),
+#             levels(anno_df_Apop$`Z Range`)
+#         )),
+#     color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)),
+#     breaks = seq(-8.526216e-05, 8.526216e-05, length.out = 100)
+#     )  %&gt;%
+#     as.ggplot()
+# p4 &lt;- apop_box
+# apop_pl &lt;- ( p3 | p4)  +
+#     plot_layout(widths = c(0.5, 0.4)) +
+#     plot_annotation(tag_levels = &quot;A&quot;)  &amp;
+#     theme(
+#         plot.tag = element_text(size = 22, face = &quot;bold&quot; ),
+#         text = element_text(size = 14)
+#     )
+# # png(
+# #     &quot;/Users/wenjunliu/PhD_thesis/Images/chapter_04/apop_pl.png&quot;,
+# #     width = 330, height =180, units=&#39;mm&#39;, res = 300
+# # )
+# # apop_pl
+# # dev.off()</code></pre>
+</div>
+<div id="jak-stat-pathway" class="section level2">
+<h2>JAK-STAT pathway</h2>
+<pre class="r"><code># library(ggplotify)
+# library(magick)
+# p1 &lt;- plot_gene_contribution(
+#     JAK_genePert %&gt;%
+#         .[rownames(.) %in% JAR_gene, colnames(.) %in% lobular_E2_sample],
+#     filterBy = &quot;max.abs&quot;,
+#     annotation_df = anno_df_jak,
+#     mapEntrezID = entrez2name,
+#     topGene = 10,
+#     annotation_colors = list(
+# 
+#         `Z Range` = setNames(
+#             colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_jak$`Z Range`))),
+#             levels(anno_df_jak$`Z Range`)
+#         )),
+#     color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)),
+#     breaks = seq(-0.00003, 0.00003, length.out = 100)
+#     ) %&gt;%
+#     as.ggplot()
+# p2 &lt;- image_read(
+#     here::here(&quot;pathview_figure/JAKSAT.png&quot;))%&gt;%
+#     image_ggplot()
+# p3 &lt;- CDKN1A_box</code></pre>
+<pre class="r"><code># jaksat &lt;-(( p1 | p3) +
+#               plot_layout(widths = c(0.9, 0.2))) / p2 +
+#      plot_layout(
+#          heights = c(0.3, 0.7)) +
+#     plot_annotation(tag_levels = &quot;A&quot;)  &amp;
+#     theme(
+#         plot.tag = element_text(size = 22, face = &quot;bold&quot; ),
+#         text = element_text(size = 14)
+#     )
+# png(
+#     &quot;/Users/wenjunliu/PhD_thesis/Images/chapter_04/JAKSAT.png&quot;,
+#     width = 250, height =300, units=&#39;mm&#39;, res = 300
+# )
+# jaksat
+# dev.off()</code></pre>
+</div>
+<div id="wnt-signaling-pathway" class="section level2">
+<h2>WNT signaling pathway</h2>
+<pre class="r"><code># p1 &lt;- plot_gene_contribution(
+#     WNT_genePert %&gt;%
+#         .[rownames(.) %in% WNT_gene, colnames(.) %in% lobular_E2_sample],
+#     filterBy = &quot;mean&quot;, 
+#     annotation_df = anno_df_WNT, 
+#     mapEntrezID = entrez2name, 
+#     topGene = 13,
+#     annotation_colors = list(
+#         `Z Range` = setNames(
+#             colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_WNT$`Z Range`))),
+#             levels(anno_df_WNT$`Z Range`)
+#         )), 
+#     clustering_method = &quot;average&quot;,
+#     color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)), 
+#     breaks = seq(-0.00003, 0.00003, length.out = 100)
+#     )   %&gt;%
+#     as.ggplot()
+# p2 &lt;- wnt_box</code></pre>
+<pre class="r"><code># wnt_plot &lt;- (p1 | p2) +
+#     plot_layout(widths = c(0.6, 0.4)) +
+#     plot_annotation(tag_levels = &quot;A&quot;)  &amp;
+#     theme(
+#         plot.tag = element_text(size = 22, face = &quot;bold&quot; ), 
+#         text = element_text(size = 14)
+#     )
+# png(
+#     &quot;/Users/wenjunliu/PhD_thesis/Images/chapter_04/wnt_plot.png&quot;,
+#     width = 300, height =150, units=&#39;mm&#39;, res = 300
+# )
+# wnt_plot
+# dev.off()</code></pre>
+</div>
+<div id="hif-signalling-pathwya" class="section level2">
+<h2>HIF signalling pathwya</h2>
+<pre class="r"><code># p1 &lt;- plot_gene_contribution(
+#     HIF_genePert %&gt;%
+#         .[rownames(.) %in% HIF_gene, colnames(.) %in% lobular_E2_sample],
+#     filterBy = &quot;mean&quot;, 
+#     annotation_df = anno_df_WNT, 
+#     mapEntrezID = entrez2name, 
+#     topGene = 10,
+#     annotation_colors = list(
+#         `Z Range` = setNames(
+#             colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_HIF$`Z Range`))),
+#             levels(anno_df_HIF$`Z Range`)
+#         )), 
+#     clustering_method = &quot;average&quot;,
+#     color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)), 
+#     breaks = seq(-0.00003, 0.00003, length.out = 100)
+#     ) %&gt;%
+#     as.ggplot()
+# p2 &lt;- hif_box
+# ```
+# 
+# ```{r}
+# hif_sig &lt;- (( p1 | p2) +
+#                   plot_layout(widths = c(0.3, 0.2))) +
+#     plot_annotation(tag_levels = &quot;A&quot;)  &amp;
+#     theme(
+#         plot.tag = element_text(size = 22, face = &quot;bold&quot; ), 
+#         text = element_text(size = 14)
+#     )
+# png(
+#     &quot;/Users/wenjunliu/PhD_thesis/Images/chapter_04/hif_sig.png&quot;,
+#     width = 270, height =120, units=&#39;mm&#39;, res = 300
+# )
+# hif_sig
+# dev.off()</code></pre>
+</div>
+<div id="sikora-signature" class="section level2">
+<h2>sikora signature</h2>
+<pre class="r"><code># # Table of goseq results in Sikora et al genes
+# goseq %&gt;% 
+#     dplyr::filter(FDR_over &lt; 0.05)  %&gt;%
+#     mutate(
+#         gs_name = str_remove_all(gs_name, &quot;kegg.&quot;)
+#     ) %&gt;%
+#     dplyr::select(
+#         `Gene-set name` = gs_name, FDR = FDR_over
+#     ) %&gt;%
+#     xtable::xtable(
+#         caption = &quot;KEGG pathways that were significantly over-represented in ILC-specific estrogen-regulated genes curated by Sikora et al.\\cite{sikora_invasive_2014}. The over-representation testing was performed using a standard hypergeometric approach with an FDR cut-off of 0.05.&quot;, 
+#         label = &quot;goseq_sikora&quot;, 
+#         digits = 0
+#     )  %&gt;%
+#     xtable::print.xtable(
+#         &quot;~/PhD_thesis/draft_figure/chapter_04/goseq_sikora.tex&quot;, type = &quot;latex&quot;,
+#         caption.placement = &quot;top&quot;,
+#         include.rownames = FALSE,
+#         sanitize.text.function = function(x) x)</code></pre>
+<pre class="r"><code># png(
+#     &quot;/Users/wenjunliu/PhD_thesis/Images/chapter_04/sikora_gene.png&quot;,
+#     width = 270, height =100, units=&#39;mm&#39;, res = 300
+# )
+# plot_grid(
+#     p1, get_legend(useless_p),
+#     rel_widths = c(9,2)
+# )
+# dev.off()</code></pre>
+</div>
+<div id="foxa1-targets" class="section level2">
+<h2>FOXA1 targets</h2>
+<pre class="r"><code># png(
+#     &quot;/Users/wenjunliu/PhD_thesis/Images/chapter_04/foxa_target.png&quot;,
+#     width = 300, height =210, units=&#39;mm&#39;, res = 300
+# )
+# g
+# dev.off()</code></pre>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.3.0 (2023-04-21)
+Platform: x86_64-apple-darwin20 (64-bit)
+Running under: macOS Ventura 13.3.1
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Australia/Adelaide
+tzcode source: internal
+
+attached base packages:
+[1] splines   stats4    stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] ggh4x_0.2.4             goseq_1.52.0            geneLenDataBase_1.36.0 
+ [4] BiasedUrn_2.0.10        readxl_1.4.3            patchwork_1.1.2        
+ [7] clusterProfiler_4.8.1   msigdbr_7.5.1           ggplotify_0.1.1        
+[10] pathview_1.40.0         RColorBrewer_1.1-3      htmltools_0.5.5        
+[13] scatterpie_0.2.1        corrplot_0.92           reactable_0.4.4        
+[16] lmerTest_3.1-3          colorspace_2.1-0        lme4_1.1-34            
+[19] Matrix_1.6-0            org.Hs.eg.db_3.17.0     xml2_1.3.5             
+[22] ggfortify_0.4.16        rvest_1.0.3             multcomp_1.4-25        
+[25] TH.data_1.1-2           MASS_7.3-60             survival_3.5-5         
+[28] mvtnorm_1.2-2           DT_0.28                 cqn_1.46.0             
+[31] quantreg_5.95           SparseM_1.81            preprocessCore_1.62.1  
+[34] nor1mix_1.3-0           mclust_6.0.0            sSNAPPY_1.5.1          
+[37] magrittr_2.0.3          cowplot_1.1.1           ensembldb_2.24.0       
+[40] AnnotationFilter_1.24.0 GenomicFeatures_1.52.1  AnnotationDbi_1.62.2   
+[43] Biobase_2.60.0          GenomicRanges_1.52.0    GenomeInfoDb_1.36.1    
+[46] IRanges_2.34.1          S4Vectors_0.38.1        igraph_1.5.0           
+[49] ggraph_2.1.0            AnnotationHub_3.8.0     BiocFileCache_2.8.0    
+[52] dbplyr_2.3.3            BiocGenerics_0.46.0     pander_0.6.5           
+[55] scales_1.2.1            yaml_2.3.7              lubridate_1.9.2        
+[58] forcats_1.0.0           stringr_1.5.0           dplyr_1.1.2            
+[61] purrr_1.0.1             readr_2.1.4             tidyr_1.3.0            
+[64] tibble_3.2.1            ggplot2_3.4.2           tidyverse_2.0.0        
+
+loaded via a namespace (and not attached):
+  [1] fs_1.6.2                      ProtGenerics_1.32.0          
+  [3] matrixStats_1.0.0             bitops_1.0-7                 
+  [5] enrichplot_1.20.0             HDO.db_0.99.1                
+  [7] httr_1.4.6                    Rgraphviz_2.44.0             
+  [9] numDeriv_2016.8-1.1           tools_4.3.0                  
+ [11] utf8_1.2.3                    R6_2.5.1                     
+ [13] mgcv_1.9-0                    lazyeval_0.2.2               
+ [15] withr_2.5.0                   graphite_1.46.0              
+ [17] prettyunits_1.1.1             gridExtra_2.3                
+ [19] cli_3.6.1                     sandwich_3.0-2               
+ [21] labeling_0.4.2                sass_0.4.6                   
+ [23] KEGGgraph_1.60.0              systemfonts_1.0.4            
+ [25] Rsamtools_2.16.0              yulab.utils_0.0.6            
+ [27] gson_0.1.0                    DOSE_3.26.1                  
+ [29] limma_3.56.2                  rstudioapi_0.15.0            
+ [31] RSQLite_2.3.1                 generics_0.1.3               
+ [33] gridGraphics_0.5-1            BiocIO_1.10.0                
+ [35] crosstalk_1.2.0               vroom_1.6.3                  
+ [37] gtools_3.9.4                  GO.db_3.17.0                 
+ [39] fansi_1.0.4                   lifecycle_1.0.3              
+ [41] edgeR_3.42.4                  SummarizedExperiment_1.30.2  
+ [43] qvalue_2.32.0                 grid_4.3.0                   
+ [45] blob_1.2.4                    promises_1.2.0.1             
+ [47] crayon_1.5.2                  lattice_0.21-8               
+ [49] KEGGREST_1.40.0               pillar_1.9.0                 
+ [51] knitr_1.43                    fgsea_1.26.0                 
+ [53] rjson_0.2.21                  boot_1.3-28.1                
+ [55] codetools_0.2-19              fastmatch_1.1-3              
+ [57] glue_1.6.2                    downloader_0.4               
+ [59] ggfun_0.1.1                   data.table_1.14.8            
+ [61] treeio_1.24.1                 vctrs_0.6.3                  
+ [63] png_0.1-8                     cellranger_1.1.0             
+ [65] gtable_0.3.3                  cachem_1.0.8                 
+ [67] xfun_0.39                     S4Arrays_1.0.4               
+ [69] mime_0.12                     tidygraph_1.2.3              
+ [71] pheatmap_1.0.12               interactiveDisplayBase_1.38.0
+ [73] ellipsis_0.3.2                nlme_3.1-162                 
+ [75] ggtree_3.8.0                  bit64_4.0.5                  
+ [77] progress_1.2.2                filelock_1.0.2               
+ [79] rprojroot_2.0.3               bslib_0.5.0                  
+ [81] DBI_1.1.3                     tidyselect_1.2.0             
+ [83] bit_4.0.5                     compiler_4.3.0               
+ [85] curl_5.0.1                    git2r_0.32.0                 
+ [87] graph_1.78.0                  DelayedArray_0.26.6          
+ [89] shadowtext_0.1.2              rtracklayer_1.60.0           
+ [91] rappdirs_0.3.3                digest_0.6.33                
+ [93] minqa_1.2.5                   rmarkdown_2.23               
+ [95] XVector_0.40.0                pkgconfig_2.0.3              
+ [97] MatrixGenerics_1.12.2         highr_0.10                   
+ [99] fastmap_1.1.1                 rlang_1.1.1                  
+[101] htmlwidgets_1.6.2             shiny_1.7.4.1                
+[103] farver_2.1.1                  jquerylib_0.1.4              
+[105] zoo_1.8-12                    jsonlite_1.8.7               
+[107] BiocParallel_1.34.2           GOSemSim_2.26.1              
+[109] RCurl_1.98-1.12               GenomeInfoDbData_1.2.10      
+[111] munsell_0.5.0                 Rcpp_1.0.11                  
+[113] ape_5.7-1                     babelgene_22.9               
+[115] viridis_0.6.4                 stringi_1.7.12               
+[117] zlibbioc_1.46.0               plyr_1.8.8                   
+[119] parallel_4.3.0                ggrepel_0.9.3                
+[121] Biostrings_2.68.1             graphlayouts_1.0.0           
+[123] hms_1.1.3                     locfit_1.5-9.8               
+[125] reshape2_1.4.4                biomaRt_2.56.1               
+[127] BiocVersion_3.17.1            XML_3.99-0.14                
+[129] evaluate_0.21                 BiocManager_1.30.21          
+[131] nloptr_2.0.3                  tzdb_0.4.0                   
+[133] tweenr_2.0.2                  httpuv_1.6.11                
+[135] MatrixModels_0.5-2            polyclip_1.10-4              
+[137] ggforce_0.4.1                 xtable_1.8-4                 
+[139] restfulr_0.0.15               tidytree_0.4.2               
+[141] later_1.3.1                   viridisLite_0.4.2            
+[143] aplot_0.1.10                  memoise_2.0.1                
+[145] GenomicAlignments_1.36.0      workflowr_1.7.0              
+[147] timechange_0.2.0              here_1.0.1                   </code></pre>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

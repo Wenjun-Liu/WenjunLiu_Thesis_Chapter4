@@ -1,0 +1,1501 @@
+---
+title: "DHT_signal"
+output: html_document
+date: "2023-06-22"
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  fig.width = 10
+)
+```
+
+```{r packages}
+library(tidyverse)
+library(yaml)
+library(scales)
+library(pander)
+library(AnnotationHub)
+library(ggraph)
+library(igraph)
+library(ensembldb)
+library(cowplot)
+library(magrittr)
+library(sSNAPPY)
+library(cqn)
+library(DT)
+library(ggfortify)
+library(org.Hs.eg.db)
+library(reactable)
+library(corrplot)
+library(htmltools)
+library(RColorBrewer)
+library(msigdbr)
+library(ggfortify)
+library(pheatmap)
+library(ggforce)
+library(ggnewscale)
+library(concaveman)
+library(ggpubr)
+library(ggh4x)
+library(colorspace)
+library(pathview)
+library(UpSetR)
+source(here::here("analysis/smallFunctions/make_gsNetwork.R"))
+```
+
+```{r options}
+panderOptions("table.split.table", Inf)
+panderOptions("big.mark", ",")
+theme_set(theme_bw())
+```
+
+```{r config}
+config <- here::here("config/config.yml") %>%
+  read_yaml()
+suffix <- paste0(config$tag)
+sp <- config$ref$species %>%
+  str_replace("(^[a-z])[a-z]*_([a-z]+)", "\\1\\2") %>%
+  str_to_title()
+```
+
+# Setup
+
+## Gene Annotations
+
+```{r ah}
+ah <- AnnotationHub() %>%
+  subset(rdataclass == "EnsDb") %>%
+  subset(str_detect(description, as.character(config$ref$release))) %>%
+  subset(genome == config$ref$build)
+stopifnot(length(ah) == 1)
+```
+
+```{r ensDb}
+ensDb <- ah[[1]]
+genesGR <- read_rds(here::here("output/genesGR.rds"))
+```
+
+## Sample metadata and merged counts
+
+Sample metadata and merged counts were read in and filtered as in the dge_analysis.Rmd. DGElists were formed for normal and tumor samples and `cqn` was applied for biases introduced by systematic artefacts.
+
+```{r init_cellType}
+init_cellType <- read_delim(here::here("config/sample_meta.txt"), delim = "\t")
+init_cellType <- init_cellType %>%
+    mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex("Stroma", ignore_case = T)), TRUE, FALSE), 
+           Epithelial = ifelse(str_detect(Dominant_cell_type, regex("Epithelial", ignore_case = T)), TRUE, FALSE), 
+           Ducts = ifelse(str_detect(Dominant_cell_type, regex("ducts", ignore_case = T)), TRUE, FALSE), 
+           Fat = ifelse(str_detect(Dominant_cell_type, regex("fat", ignore_case = T)), TRUE, FALSE), 
+           patient = str_replace(patient, "TH", "TH-")) %>%
+    pivot_longer(c("Stroma", "Epithelial", "Ducts", "Fat"),
+                 names_to = "cell_type", 
+                 values_to = "TF") %>%
+    mutate(cell_type = ifelse(TF, cell_type, NA)) %>%
+    dplyr::select(-c("TF", "Dominant_cell_type")) %>%
+    .[!is.na(.$cell_type),] %>%
+    chop("cell_type") %>%
+    mutate(cell_type = vapply(.$cell_type, function(x){
+        paste(x,collapse = ";")
+    }, character(1)))
+    
+```
+
+```{r samples}
+samples <- config$samples %>%
+  here::here() %>%
+  read_tsv() %>%
+    left_join(init_cellType) %>%
+  mutate(
+    Filename = paste0(sample, ".r_1"), 
+    condition = ifelse(Tumor, 
+                       paste("Tumor", treat, sep = "_"), 
+                       paste("Normal", treat, sep = "_")), 
+    patient = vapply(.$patient, function(x){str_split(x, "-")[[1]][2]}, character(1)), 
+    patient = ifelse(Tumor, 
+                       paste("Tumor", patient, sep = "-"), 
+                       paste("Normal",patient, sep = "-")), 
+    desc = paste(patient, treat, sep = " ")
+  ) %>%
+  dplyr::select(-c("name", "sample")) %>%
+  dplyr::rename(name = desc) %>%
+  mutate_if(
+    function(x){length(unique(x)) < length(x)},
+    as.factor
+  ) %>%
+  mutate(
+    treat = relevel(treat, ref = "Veh")
+  )
+```
+
+```{r mergedSamples}
+mergedSamples <- samples %>%
+  group_by(name, patient, treat, Tumor, cell_type, Tissue_type, Age, Diagnosis) %>%
+  tally()
+tumor_sample <- mergedSamples %>%
+  dplyr::filter(Tumor == TRUE) %>%
+    droplevels()
+```
+
+```{r}
+tumor_sample <- tumor_sample %>%
+    dplyr::mutate(
+        Diagnosis = ifelse(
+            str_detect(Diagnosis, "invasive"), 
+            "ILC-like", "IDC-like"
+        ),
+        Diagnosis = ifelse(
+            patient == "Tumor-8", 
+            "IDC-like", 
+            Diagnosis
+        ), 
+        Diagnosis = as.factor(Diagnosis)
+    )
+```
+
+
+```{r set_cols}
+treat_cols <- c(
+  Veh = rgb(0.7, 0.7, 0.7),
+  DHT = rgb(0.8, 0.2, 0.2),
+  E2 = rgb(0.2, 0.2, 0.8),
+  `E2+DHT` = rgb(1, 0.4, 1)
+)
+tumor_cols <- hcl.colors(
+  n = length(unique(samples$Tumor)), 
+  palette = "Zissou 1"
+  ) %>%
+  setNames(unique(samples$Tumor))
+patient_cols <- hcl.colors(
+  n = length(levels(mergedSamples$patient)), 
+  palette = "Spectral"
+  ) %>%
+  setNames(levels(mergedSamples$patient))
+diag_cols <- readRDS("~/GSE800098/output/diag_cols.rds")
+```
+
+```{r treat_shapes}
+treat_shapes <- c(
+  Veh = 1,
+  DHT = 19,
+  E2 = 15,
+  `E2+DHT` = 17
+)
+```
+
+```{r counts}
+# counts <- here::here("data/aligned/counts/counts.out.gz") %>%
+#   gzfile() %>%
+#   read_tsv(comment = "#") %>%
+#   dplyr::select(Geneid, ends_with("bam")) %>%
+#   rename_at(vars(ends_with("bam")), dirname) %>%
+#   rename_all(basename) %>%
+#   column_to_rownames("Geneid")
+```
+
+```{r mergedCounts}
+# mergedCounts <- counts %>%
+#   rownames_to_column("gene_id") %>%
+#   pivot_longer(
+#     cols = -gene_id,
+#     names_to = "Filename",
+#     values_to = "counts"
+#   ) %>%
+#   left_join(samples, by = "Filename") %>%
+#   group_by(
+#     gene_id, name, patient, treat, Tumor) %>%
+#   summarise(counts = sum(counts), .groups = "drop") %>%
+#   pivot_wider(
+#     id_cols = gene_id,
+#     values_from = counts,
+#     names_from = name
+#   ) %>%
+#   column_to_rownames("gene_id")
+# saveRDS(mergedCounts, here::here("data/mergedCounts.rds"))
+mergedCounts <- readRDS(here::here("data/mergedCounts.rds"))
+```
+
+```{r rm_counts, echo=FALSE}
+rm(samples)
+gc()
+```
+
+The filtered and normalised `DGEList` was loaded in. 
+
+```{r dge}
+dge_tumor <- readRDS(here::here("output/dge_tumor.rds"))
+```
+
+```{r cqn}
+cqNorma_tumor <- with(
+  dge_tumor,
+  cqn(
+    counts= counts,
+    x = genes$gc_content,
+    lengths = genes$ave_tx_len
+  )
+)
+dge_tumor$offset <- cqNorma_tumor$glm.offset
+logCPM_tumor <- cqNorma_tumor$y + cqNorma_tumor$offset
+```
+
+```{r pcaPost}
+pcaPost_tumor <- logCPM_tumor %>%
+  t() %>%
+  prcomp() 
+```
+
+```{r}
+gsTopology <- retrieve_topology(database = "kegg", species = "hsapiens")
+logCPM_tumor2 <- logCPM_tumor
+rownames(logCPM_tumor2) <- mapIds(ensDb,rownames(logCPM_tumor), "ENTREZID", keytype = "GENEID")
+logCPM_tumor2 <- logCPM_tumor2[!is.na(rownames(logCPM_tumor2)),]
+ssFC_tumor <- sSNAPPY::weight_ss_fc(logCPM_tumor2, tumor_sample, groupBy = "patient", treatColumn = "treat", sampleColumn = "name")
+ssFC_tumor <- ssFC_tumor$weighted_logFC/ssFC_tumor$weight
+weightedFC_tumor <- sSNAPPY::weight_ss_fc(logCPM_tumor2, tumor_sample, groupBy = "patient", treatColumn = "treat", sampleColumn = "name")
+genePertScore_tumor <- raw_gene_pert(weightedFC_tumor$weighted_logFC, gsTopology)
+```
+
+```{r formatP}
+formatP <- function(p, m = 0.0001){
+out <- rep("", length(p))
+out[p < m] <- sprintf("%.2e", p[p<m])
+out[p >= m] <- sprintf("%.4f", p[p>=m])
+out
+}
+```
+
+Outputs of `sSNAPPY` workflow for tumor samples were read in.
+
+```{r}
+treat_sig_tumor <- readRDS(here::here("output/treat_sig_tumor.rds"))
+normalised_tumor <- readRDS(here::here("output/normalisedScores_tumor.rds"))
+```
+
+```{r}
+normalised_tumor_mat <- normalised_tumor %>%
+    dplyr::select(gs_name, sample, robustZ) %>%
+    pivot_wider(
+        names_from = "sample", 
+        values_from = "robustZ"
+    ) %>%
+    column_to_rownames("gs_name")
+    
+```
+
+```{r}
+new_diag_col <- qualitative_hcl(2, palette = "Dark 3") %>%
+    set_names(c("IDC-like", "ILC-like"))
+new_treat_col <- qualitative_hcl(4, palette = "Dynamic") %>%
+    set_names(levels(tumor_sample$treat))
+```
+
+```{r}
+ssFC_tumor_df <- ssFC_tumor %>%
+    as.data.frame() %>%
+    rownames_to_column("entrezid") %>%
+    mutate(
+        entrezid = str_remove_all(entrezid, "ENTREZID.")
+    ) %>%
+    left_join(
+        genesGR %>%
+            as.data.frame() %>%
+            unnest(entrezid) %>%
+            mutate(entrezid = as.character(entrezid)) %>%
+            dplyr::select(entrezid, gene_name)
+    ) %>%
+    pivot_longer(
+        cols = contains("Tumor"), 
+        names_to = "name", 
+        values_to = "ssFC"
+    ) %>%
+    left_join(
+        tumor_sample
+    ) 
+```
+
+```{r}
+load(system.file("extdata", "entrez2name.rda", package = "sSNAPPY"))
+```
+
+```{r}
+logCPM_tumor_df <- logCPM_tumor %>%
+    as.data.frame() %>%
+    rownames_to_column("gene_id") %>%
+    pivot_longer(
+        cols = -"gene_id", 
+        names_to = "name", 
+        values_to = "logCPM"
+    ) %>%
+    left_join(
+        tumor_sample
+    ) %>%
+    left_join(
+        dge_tumor$genes %>%
+            dplyr::select(gene_id, gene_name)
+    )
+```
+
+
+```{r}
+normalised_tumor_df <- normalised_tumor %>%
+    dplyr::select(sample, gs_name, robustZ) %>%
+    pivot_wider(
+        names_from = "gs_name", 
+        values_from = "robustZ"
+    )
+```
+
+
+# DHT signature
+
+```{r}
+treat_tumor_dht <- treat_sig_tumor %>%
+    dplyr::filter(
+        Comparison %in% c("DHT_infiltrating", "DHT_invasive"))
+dht_ductal_gs <- treat_sig_tumor %>%
+    dplyr::filter(
+        Comparison ==  "DHT_infiltrating", 
+        FDR < 0.05) 
+dht_ductal_gs <- pull(dht_ductal_gs, `t statistic`) %>%
+    set_names(dht_ductal_gs$gs_name)
+```
+
+
+By applying the sSNAPPY workflow, 9 KEGG pathways were found to be significantly perturbed in DHT-treated ductal-like PDEs in comparison to the vehicle-treated PDEs. By performing community detection on the network of pathways significantly perturbed by DHT in IDC-like PDEs,  two main communities were formed: 1) Cell growth and death; 2) Aging & Endocrine system & Signaling molecules and interaction. 
+
+```{r}
+set.seed(123)
+treat_tumor_dht %>%
+    mutate(
+        Status = ifelse(`t statistic` < 0, "Inhibited", "Activated")) %>%
+    dplyr::filter(
+        Comparison == "DHT_infiltrating",
+        FDR < 0.05
+    ) %>%
+    plot_community(
+        gsTopology = gsTopology,
+        colorBy = "Status",
+        communityMethod = "label_prop"
+    ) +
+    scale_color_manual(
+        values = c("Inhibited" = "navyblue", "Activated" = "darkred"),
+         name = "Pathway Status"
+    ) +
+    scale_fill_discrete_divergingx(palette = "Fall") +
+    theme(
+        panel.border  = element_blank(),
+        legend.key.size = unit(10, "mm"),
+        legend.text = element_text(size = 9),
+        legend.title = element_text(size = 11),
+        legend.margin=margin(0,0,0,0)
+    )
+```
+
+```{r}
+ductal_DHT_sample <- tumor_sample %>%
+    ungroup() %>%
+    dplyr::filter(
+        treat == "DHT", 
+        Diagnosis == "IDC-like"
+    ) %>%
+    pull(name)
+```
+
+The potential drivers behind the perturbation of each pathway were investigated. 
+
+## Apoptosis
+
+
+```{r}
+Apop_genePert <-  genePertScore_tumor$`kegg.Apoptosis`
+Apop_path <- normalised_tumor_mat %>%
+    .["kegg.Apoptosis", colnames(.) %in% ductal_DHT_sample]
+Apop_gene <- Apop_genePert %>%
+        .[, colnames(.) %in% ductal_DHT_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == 3}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(Apop_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+```
+
+```{r}
+anno_df_Apop <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Apoptosis`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    Apop_genePert %>%
+        .[rownames(.) %in% Apop_gene, colnames(.) %in% ductal_DHT_sample],
+    filterBy = "max.abs", 
+    annotation_df = anno_df_Apop, 
+    mapEntrezID = entrez2name, 
+    topGene = 10,
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Apop$`Z Range`))),
+            levels(anno_df_Apop$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    breaks = seq(-0.00012, 0.00012, length.out = 100)
+    ) 
+```
+
+
+
+```{r}
+Apop_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% Apop_gene
+    ) %>%
+    pull(mapTo)
+apop_box <-  ssFC_tumor_df %>%
+        dplyr::filter(
+            gene_name %in% Apop_gene_name, 
+            treat == "DHT"
+        ) %>%
+        mutate(
+            gene_name = factor(gene_name, levels = c(
+                "NFKBIA", "TNF", "ATF4",  "EIF2AK3", "FADD",
+                "GADD45G" ,"TNFRSF10A", "CASP8", "MAPK10"
+            ))) %>%
+        ggplot(
+            aes(Diagnosis, ssFC, fill = Diagnosis)
+        ) +
+        geom_boxplot() +
+        facet_wrap(~gene_name, 
+                   scales = "free_y") +
+        scale_fill_manual(
+            values = new_diag_col, 
+            name = "Predicted\nsubtype"
+        ) +
+        geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+        theme(
+            axis.text.x = element_text(colour = new_diag_col)
+        ) +
+        labs(
+            y = "ssFC",
+            x = "")
+apop_box
+```
+
+
+## Cell Cycle
+
+```{r}
+CC_genePert <-  genePertScore_tumor$`kegg.Cell cycle`
+CC_path <- normalised_tumor_mat %>%
+    .["kegg.Cell cycle", colnames(.) %in% ductal_DHT_sample]
+CC_gene <- CC_genePert %>%
+        .[, colnames(.) %in% ductal_DHT_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == -3}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(CC_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+```
+
+```{r}
+anno_df_CC <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Cell cycle`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    CC_genePert %>%
+        .[rownames(.) %in% CC_gene, colnames(.) %in% ductal_DHT_sample],
+    annotation_df = anno_df_CC, 
+    mapEntrezID = entrez2name, 
+    topGene = length(CC_gene),
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_CC$`Z Range`))),
+            levels(anno_df_CC$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    breaks = seq(-0.00085, 0.00085, length.out = 100)
+    ) 
+```
+
+```{r}
+CC_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% CC_gene
+    ) %>%
+    pull(mapTo)
+CC_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% c("PLK1", "CDK1"), 
+        treat == "DHT"
+        ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+CC_box
+```
+
+## p53 signalling pathway
+
+```{r}
+p53_genePert <-  genePertScore_tumor$`kegg.p53 signaling pathway`
+p53_path <- normalised_tumor_mat %>%
+    .["kegg.p53 signaling pathway", colnames(.) %in% ductal_DHT_sample]
+p53_gene <- p53_genePert %>%
+        .[, colnames(.) %in% ductal_DHT_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == -3}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(p53_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+```
+
+```{r}
+# pathview(gene.data  =  ssFC_tumor %>%
+#              .[rownames(.) %in% p53_gene, colnames(.) %in% ductal_DHT_sample] %>%
+#              apply(., 1, median) %>%
+#              set_names(
+#                  str_remove_all(
+#                      names(.), "ENTREZID:" 
+#                  )
+#              ),
+#          pathway.id = "04115",
+#          species    = "hsa",
+#          kegg.dir = here::here("figure/"),
+#          low = list(gene ="skyblue", cpd = "black"),
+#          mid = list(gene ="grey", cpd = "black"),
+#          high = list(gene ="red", cpd = "black"),
+#          )
+```
+
+```{r}
+anno_df_p53 <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Cell cycle`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    p53_genePert %>%
+        .[rownames(.) %in% p53_gene, colnames(.) %in% ductal_DHT_sample],
+    annotation_df = anno_df_p53, 
+    mapEntrezID = entrez2name, 
+    topGene = length(p53_gene),
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_p53$`Z Range`))),
+            levels(anno_df_p53$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    breaks = seq(-0.00013, 0.00013, length.out = 100)
+    ) 
+```
+
+```{r}
+p53_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% p53_gene
+    ) %>%
+    pull(mapTo)
+p53_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% p53_gene_name, 
+        treat == "DHT"
+        ) %>%
+    mutate(
+        gene_name = factor(gene_name, levels = c("CDK1", "CDK4", "GTSE1", "CCND2", "CCNB1", "RRM2", "CYCS", "CASP3"))) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+p53_box
+```
+
+## Hedgehog signaling pathway
+
+```{r}
+HH_genePert <-  genePertScore_tumor$`kegg.Hedgehog signaling pathway`
+HH_path <- normalised_tumor_mat %>%
+    .["kegg.Hedgehog signaling pathway", colnames(.) %in% ductal_DHT_sample]
+HH_gene <- HH_genePert %>%
+        .[, colnames(.) %in% ductal_DHT_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == -3}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(HH_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+HH_gene <- intersect(HH_gene, rownames(weightedFC_tumor$weighted_logFC))
+```
+
+```{r}
+anno_df_HH <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Hedgehog signaling pathway`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    HH_genePert %>%
+        .[rownames(.) %in% HH_gene, colnames(.) %in% ductal_DHT_sample],
+    annotation_df = anno_df_HH, 
+    mapEntrezID = entrez2name, 
+    topGene = length(HH_gene),
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HH$`Z Range`))),
+            levels(anno_df_HH$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    breaks = seq(-7.800603e-05, 7.800603e-05, length.out = 100)
+    ) 
+```
+
+```{r}
+HH_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% HH_gene
+    ) %>%
+    pull(mapTo)
+HH_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% HH_gene_name, 
+        treat == "DHT"
+        ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+HH_box
+```
+
+## HIF signalling pathway
+
+```{r}
+HIF_genePert <-  genePertScore_tumor$`kegg.HIF-1 signaling pathway`
+HIF_path <- normalised_tumor_mat %>%
+    .["kegg.HIF-1 signaling pathway", colnames(.) %in% ductal_DHT_sample]
+HIF_gene <- HIF_genePert %>%
+        .[, colnames(.) %in% ductal_DHT_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == 3}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(HIF_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+HIF_gene <- intersect(HIF_gene, rownames(ssFC_tumor))
+```
+
+```{r}
+pathview(gene.data  =  ssFC_tumor %>%
+             .[rownames(.) %in% HIF_gene, colnames(.) %in% ductal_DHT_sample] %>%
+             apply(., 1, median) %>%
+             set_names(
+                 str_remove_all(
+                     names(.), "ENTREZID:" 
+                 )
+             ),
+         pathway.id = "04066",
+         species    = "hsa",
+         kegg.dir = here::here("figure/"),
+         low = list(gene ="skyblue", cpd = "black"),
+         mid = list(gene ="grey", cpd = "black"),
+         high = list(gene ="red", cpd = "black"),
+         )
+```
+
+```{r}
+anno_df_HIF <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.HIF-1 signaling pathway`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    HIF_genePert %>%
+        .[rownames(.) %in% HIF_gene, colnames(.) %in% ductal_DHT_sample],
+    filterBy = "mean", 
+    annotation_df = anno_df_HIF, 
+    mapEntrezID = entrez2name, 
+    topGene = 20,
+    annotation_colors = list(
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HIF$`Z Range`))),
+            levels(anno_df_HIF$`Z Range`)
+        )), 
+    clustering_method = "average",
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    cutree_rows = 2,
+    breaks = seq(-0.00025, 0.00025, length.out = 100)
+    ) 
+```
+
+
+```{r}
+HIF_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% HIF_gene
+    ) %>%
+    pull(mapTo)
+HIF_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% c("HIF1A", "SLC2A1", "MTOR" , "RPS6"), 
+        treat == "DHT"
+        ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+HIF_box
+```
+
+
+## Lipid and atherosclerosis
+
+
+```{r}
+gsTopology %>%
+    .[names(.) %in% c(
+        "kegg.Apoptosis", "kegg.Lipid and atherosclerosis"
+    )] %>%
+    lapply(rownames) %>%
+    fromList() %>%
+    upset(
+        sets = colnames(.),
+        nintersects = NA
+    )
+
+```
+
+```{r}
+Lipid_genePert <-  genePertScore_tumor$`kegg.Lipid and atherosclerosis`
+Lipid_path <- normalised_tumor_mat %>%
+    .["kegg.Lipid and atherosclerosis", colnames(.) %in% ductal_DHT_sample]
+Lipid_gene <- Lipid_genePert %>%
+        .[, colnames(.) %in% ductal_DHT_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == 3}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(Lipid_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+Lipid_gene <- intersect(Lipid_gene, rownames(weightedFC_tumor$weighted_logFC))
+```
+
+```{r}
+anno_df_Lipid <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Lipid and atherosclerosis`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    Lipid_genePert %>%
+        .[rownames(.) %in% Lipid_gene, colnames(.) %in% ductal_DHT_sample],
+    filterBy = "max.abs", 
+    annotation_df = anno_df_Lipid, 
+    mapEntrezID = entrez2name, 
+    topGene = 13,
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Lipid$`Z Range`))),
+            levels(anno_df_Lipid$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    cutree_rows = 2,
+    breaks = seq(-0.00012, 0.00012, length.out = 100)
+    ) 
+```
+
+
+```{r}
+Lipid_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% Lipid_gene
+    ) %>%
+    pull(mapTo)
+Lipid_box <-  ssFC_tumor_df %>%
+        dplyr::filter(
+            gene_name %in% c("HSPA6", "HSPA1A", "HSPA1B", "MAPK1", "TIRAP"),
+            treat == "DHT"
+        ) %>%
+        ggplot(
+            aes(Diagnosis, ssFC, fill = Diagnosis)
+        ) +
+        geom_boxplot() +
+        facet_wrap(~gene_name, 
+                   scales = "free_y") +
+        scale_fill_manual(
+            values = new_diag_col, 
+            name = "Predicted\nsubtype"
+        ) +
+        geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+        theme(
+            axis.text.x = element_text(colour = new_diag_col)
+        ) +
+        labs(
+            y = "ssFC",
+            x = "")
+Lipid_box
+```
+
+
+# Compare to known AR signature
+
+## AR signatures
+
+```{r}
+AR_sig <- read.csv(here::here("data/AR_sig_down.csv")) %>%
+    mutate(AR_sig = "Down") %>%
+    rbind(
+        read.csv(here::here("data/AR_sig_up.csv")) %>%
+            mutate(AR_sig = "Up")
+    )
+# AR_sig %>%
+#     dplyr::filter(
+#         str_detect(gene_name, "SLC")
+#         # gene_name == "SLC2A1"
+#         )
+```
+
+A list of `r nrow(AR_sig)` AR signatures that were previously detected in androgen-treated cell line and xenograft models were read in. 
+
+```{r}
+kg <- sapply(gsTopology, rownames) %>%
+    do.call(cbind, .) %>%
+    as.data.frame() %>%
+    pivot_longer(
+        cols = everything(),
+        names_to = "gs_name",
+        values_to = "entrezid"
+    ) %>%
+    left_join(
+        entrez2name %>%
+            dplyr::rename(gene_name = mapTo)
+    ) %>%
+    left_join(genesGR %>%
+                  as.data.frame() %>%
+                  dplyr::select(gene_name, gene_id)) %>%
+    unique() %>%
+    dplyr::select(-entrezid)
+```
+
+
+
+
+```{r}
+ductal_DHT_fc <- ssFC_tumor %>%
+    .[, colnames(.) %in% ductal_DHT_sample] %>%
+    apply(1, median)
+ductal_DHT_fcDir <- ifelse(ductal_DHT_fc < 0, "Down", "Up") %>%
+    enframe(
+        name = "entrezid", 
+        value = "Direction"
+    ) %>%
+    left_join(
+        entrez2name %>%
+            dplyr::rename(gene_name = mapTo)
+    )
+ar_sig_overlap <- kg %>%
+    dplyr::filter(
+        gs_name %in% names(dht_ductal_gs)) %>%
+    mutate(gs_name = str_remove_all(gs_name, "kegg.")) %>%
+    left_join(
+        AR_sig
+    ) %>%
+    dplyr::select(-gene_id) %>%
+    drop_na() %>%
+    left_join(ductal_DHT_fcDir) %>%
+    unique() %>%
+    dplyr::filter(AR_sig == Direction) %>%
+    mutate_all(as.factor)
+```
+
+Out of the `r nrow(AR_sig)` previously detected AR signatures, `r length(levels(ar_sig_overlap$gene_name))` of them were also implicated in pathways significantly perturbed by DHT in ductal-like tumours and had directional concordant changes. 
+
+The distribution of those `r length(levels(ar_sig_overlap$gene_name))` genes' single-sample logFCs in all DHT-treated PDEs are:
+
+```{r, fig.height=7, fig.width=12, fig.cap="*Single-sample logFCs of DHT-treated samples for genes that were involved in significant pathway perturbation among IDC-like tumours and were previoulsy report AR signatures. Background colors of the gene name strips indicate the directions of changes upon DHT treatment reported previously, where blue means AR-repressed.*"}
+col <- AR_sig %>%
+    mutate(color = ifelse(
+        AR_sig == "Down","lightskyblue", "pink"
+    )) %>%
+    dplyr::filter(gene_name %in% ar_sig_overlap$gene_name) %>%
+    .[match(levels(ar_sig_overlap$gene_name), .$gene_name),] %>%
+    pull(color)
+strips <- strip_themed(
+    background_x = elem_list_rect(
+        fill = adjustcolor(col, alpha.f = 0.5)
+    )
+)
+ar_sig_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% ar_sig_overlap$gene_name,
+        treat == "DHT"
+        ) %>%
+    mutate(Diagnosis = ifelse(
+        str_detect(Diagnosis, "invasive"), "ILC-like", "IDC-like")) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap2(.~gene_name, 
+               scales = "free_y", 
+               strip = strips) +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    scale_alpha_manual(name = "Subtype", values = c(.3, 1), 
+                       guide = FALSE) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        strip.text = element_text(size = 18), 
+        axis.text.x = element_text(size = 15, 
+                                   colour = new_diag_col)
+    ) +
+    xlab("Predicted Subtype") 
+ar_sig_box
+```
+
+
+## Vasiliou et al. AR responses
+
+```{r}
+vasiliou_ar <- read_csv(here::here("data/Vasiliou_etal_AR_sig.csv")) %>%
+    mutate(Visiliou_dir = ifelse(logFC < 0, "Down", "Up"))
+```
+
+In the study by [Vasiliou et al. (2022)](https://clinicalproteomicsjournal.biomedcentral.com/articles/10.1186/s12014-022-09352-2#Sec2), ER+, PR+ and HER2 overexpression BT-474 cell line were treated with DHT for 24 hrs before RNA-sequencing. `r nrow(vasiliou_ar)` differentially expressed genes were found. The BT-474 cell line was also derived from an IDC tumour. 
+
+```{r}
+vasiliou_ar_overlap <- vasiliou_ar %>%
+    dplyr::select(gene_name, Visiliou_dir) %>%
+    left_join(AR_sig) %>%
+    drop_na() %>%
+    mutate(Concordant = ifelse(
+        Visiliou_dir == AR_sig, TRUE, FALSE
+    ))
+```
+
+`r nrow(vasiliou_ar_overlap)` of those DEGs were also in the list AR signatures. The directions of changes reported in the two studies were all concordant. `r nrow(dplyr::filter(vasiliou_ar_overlap, AR_sig == "Down"))` of the concordant AR responses were down-regulated genes and  `r nrow(dplyr::filter(vasiliou_ar_overlap, AR_sig == "Up"))` were up-regulated. 
+
+
+```{r}
+vasiliou_pde_overlap  <- kg %>%
+    dplyr::filter(
+        gs_name %in% names(dht_ductal_gs)) %>%
+    mutate(gs_name = str_remove_all(gs_name, "kegg.")) %>%
+    left_join(
+        vasiliou_ar
+    ) %>%
+    dplyr::select(gs_name, gene_name, Visiliou_dir) %>%
+    drop_na() %>%
+    left_join(ductal_DHT_fcDir) %>%
+    unique() %>%
+    dplyr::filter(Visiliou_dir == Direction) %>%
+    mutate_all(as.factor)
+```
+
+Out of the `r nrow(vasiliou_ar_overlap)` DEGs reported by Vasiliou et al., `r length(levels(vasiliou_pde_overlap$gene_name))` of them were also implicated in pathways significantly perturbed by DHT in ductal-like tumours and had directional concordant changes.
+
+The distribution of those `r length(levels(vasiliou_pde_overlap$gene_name))` genes' single-sample logFCs in all DHT-treated PDEs are:
+
+```{r, fig.height=7, fig.width=8, fig.cap="*Single-sample logFCs of DHT-treated samples for genes that were involved in significant pathway perturbation among IDC-like tumours and were previoulsy report to be AR-regulated genes by Vasiliou et al.. Background colors of the gene name strips indicate the directions of changes upon DHT treatment reported previously, where blue means AR-repressed.*"}
+col <- vasiliou_ar %>%
+    mutate(color = ifelse(
+        Visiliou_dir == "Down","lightskyblue", "pink"
+    )) %>%
+    dplyr::filter(gene_name %in% vasiliou_pde_overlap$gene_name) %>%
+    .[match(levels(vasiliou_pde_overlap$gene_name), .$gene_name),] %>%
+    pull(color)
+strips <- strip_themed(
+    background_x = elem_list_rect(
+        fill = adjustcolor(col, alpha.f = 0.5)
+    )
+)
+vasiliou_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% vasiliou_pde_overlap$gene_name,
+        treat == "DHT"
+        ) %>%
+    mutate(Diagnosis = ifelse(
+        str_detect(Diagnosis, "invasive"), "ILC-like", "IDC-like")) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap2(.~gene_name, 
+               scales = "free_y", 
+               strip = strips) +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    scale_alpha_manual(name = "Subtype", values = c(.3, 1), 
+                       guide = FALSE) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        strip.text = element_text(size = 18), 
+        axis.text.x = element_text(size = 15, 
+                                   colour = new_diag_col)
+    ) +
+    xlab("Predicted Subtype") 
+vasiliou_box
+```
+
+
+
+# Thesis figures
+
+<!-- ## network -->
+
+<!-- ```{r} -->
+<!-- set.seed(123) -->
+<!-- network_dht <- treat_tumor_dht %>% -->
+<!--     mutate( -->
+<!--         Status = ifelse(`t statistic` < 0, "Inhibited", "Activated")) %>% -->
+<!--     dplyr::filter( -->
+<!--         Comparison == "DHT_infiltrating", -->
+<!--         FDR < 0.05 -->
+<!--     ) %>% -->
+<!--     plot_community( -->
+<!--         gsTopology = gsTopology, -->
+<!--         colorBy = "Status", -->
+<!--         communityMethod = "label_prop", -->
+<!--         lb_size = 4, -->
+<!--         label.fontsize = 14 -->
+<!--     ) + -->
+<!--     scale_color_manual( -->
+<!--         values = c("Inhibited" = "navyblue", "Activated" = "darkred"), -->
+<!--          name = "Pathway Status" -->
+<!--     ) + -->
+<!--     scale_fill_discrete_divergingx(palette = "Fall") + -->
+<!--     guides(fill = FALSE) + -->
+<!--     theme( -->
+<!--         panel.border  = element_blank(), -->
+<!--         legend.key.size = unit(10, "mm"), -->
+<!--         legend.text = element_text(size = 12), -->
+<!--         legend.title = element_text(size = 14), -->
+<!--         legend.margin=margin(0,0,0,0) -->
+<!--     ) -->
+<!-- png( -->
+<!--     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/network_dht.png", -->
+<!--     width = 250, height =200, units='mm', res = 300 -->
+<!-- ) -->
+<!-- network_dht -->
+<!-- dev.off() -->
+<!-- ``` -->
+
+<!-- ## Apoptosis -->
+
+<!-- ```{r} -->
+<!-- p1 <- plot_gene_contribution( -->
+<!--     Apop_genePert %>% -->
+<!--         .[rownames(.) %in% Apop_gene, colnames(.) %in% ductal_DHT_sample], -->
+<!--     filterBy = "max.abs", -->
+<!--     annotation_df = anno_df_Apop, -->
+<!--     mapEntrezID = entrez2name, -->
+<!--     topGene = 10, -->
+<!--     annotation_colors = list( -->
+
+<!--         `Z Range` = setNames( -->
+<!--             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Apop$`Z Range`))), -->
+<!--             levels(anno_df_Apop$`Z Range`) -->
+<!--         )), -->
+<!--     color = rev(divergex_hcl(100, palette = "RdBu")), -->
+<!--     breaks = seq(-0.00012, 0.00012, length.out = 100) -->
+<!--     ) %>% -->
+<!--     as.ggplot() -->
+<!-- p2 <- apop_box -->
+<!-- apop_DHT <- (( p1 | p2) + -->
+<!--                   plot_layout(widths = c(0.2, 0.2))) + -->
+<!--     plot_annotation(tag_levels = "A")  & -->
+<!--     theme( -->
+<!--         plot.tag = element_text(size = 22, face = "bold" ), -->
+<!--         text = element_text(size = 14) -->
+<!--     ) -->
+<!-- png( -->
+<!--     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/apop_DHT.png", -->
+<!--     width = 400, height =230, units='mm', res = 300 -->
+<!-- ) -->
+<!-- apop_DHT -->
+<!-- dev.off() -->
+<!-- ``` -->
+
+<!-- ## Cell Cyle -->
+
+<!-- ```{r} -->
+<!-- # p1 <- plot_gene_contribution( -->
+<!-- #     CC_genePert %>% -->
+<!-- #         .[rownames(.) %in% CC_gene, colnames(.) %in% ductal_DHT_sample], -->
+<!-- #     annotation_df = anno_df_CC, -->
+<!-- #     mapEntrezID = entrez2name, -->
+<!-- #     topGene = length(CC_gene), -->
+<!-- #     annotation_colors = list( -->
+<!-- # -->
+<!-- #         `Z Range` = setNames( -->
+<!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_CC$`Z Range`))), -->
+<!-- #             levels(anno_df_CC$`Z Range`) -->
+<!-- #         )), -->
+<!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), -->
+<!-- #     breaks = seq(-0.00085, 0.00085, length.out = 100), -->
+<!-- #     cutree_rows = 2, -->
+<!-- #     ) %>% -->
+<!-- #     as.ggplot() -->
+<!-- # p2 <- CC_box -->
+<!-- # CC_DHT <- (( p1 | p2) + -->
+<!-- #                   plot_layout(widths  = c(0.4, 0.2))) + -->
+<!-- #     plot_annotation(tag_levels = "A")  & -->
+<!-- #     theme( -->
+<!-- #         plot.tag = element_text(size = 22, face = "bold" ), -->
+<!-- #         text = element_text(size = 14) -->
+<!-- #     ) -->
+<!-- # png( -->
+<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/CC_DHT.png", -->
+<!-- #     width = 300, height =180, units='mm', res = 300 -->
+<!-- # ) -->
+<!-- # CC_DHT -->
+<!-- # dev.off() -->
+<!-- ``` -->
+
+<!-- ## p53 signalling -->
+
+<!-- ```{r} -->
+<!-- # p1 <- plot_gene_contribution( -->
+<!-- #     p53_genePert %>% -->
+<!-- #         .[rownames(.) %in% p53_gene, colnames(.) %in% ductal_DHT_sample], -->
+<!-- #     annotation_df = anno_df_p53, -->
+<!-- #     mapEntrezID = entrez2name, -->
+<!-- #     topGene = length(p53_gene), -->
+<!-- #     annotation_colors = list( -->
+<!-- # -->
+<!-- #         `Z Range` = setNames( -->
+<!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_p53$`Z Range`))), -->
+<!-- #             levels(anno_df_p53$`Z Range`) -->
+<!-- #         )), -->
+<!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), -->
+<!-- #     breaks = seq(-0.00013, 0.00013, length.out = 100) -->
+<!-- #     ) %>% -->
+<!-- #     as.ggplot() -->
+<!-- # p2 <- p53_box -->
+<!-- # p53_DHT <- (( p1 | p2) + -->
+<!-- #                   plot_layout(widths = c(0.2, 0.2))) + -->
+<!-- #     plot_annotation(tag_levels = "A")  & -->
+<!-- #     theme( -->
+<!-- #         plot.tag = element_text(size = 22, face = "bold" ), -->
+<!-- #         text = element_text(size = 14) -->
+<!-- #     ) -->
+<!-- # png( -->
+<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/p53_DHT.png", -->
+<!-- #     width = 320, height =150, units='mm', res = 300 -->
+<!-- # ) -->
+<!-- # p53_DHT -->
+<!-- # dev.off() -->
+<!-- ``` -->
+<!-- ## Hedgehog signalling -->
+
+<!-- ```{r} -->
+<!-- # p1 <- plot_gene_contribution( -->
+<!-- #     HH_genePert %>% -->
+<!-- #         .[rownames(.) %in% HH_gene, colnames(.) %in% ductal_DHT_sample], -->
+<!-- #     annotation_df = anno_df_HH, -->
+<!-- #     mapEntrezID = entrez2name, -->
+<!-- #     topGene = length(HH_gene), -->
+<!-- #     annotation_colors = list( -->
+<!-- # -->
+<!-- #         `Z Range` = setNames( -->
+<!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HH$`Z Range`))), -->
+<!-- #             levels(anno_df_HH$`Z Range`) -->
+<!-- #         )), -->
+<!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), -->
+<!-- #     breaks = seq(-7.800603e-05, 7.800603e-05, length.out = 100) -->
+<!-- #     ) %>% -->
+<!-- #     as.ggplot() -->
+<!-- # p2 <- HH_box -->
+<!-- # HH_DHT <- (( p1 | p2) + -->
+<!-- #                   plot_layout(widths = c(0.3, 0.2))) + -->
+<!-- #     plot_annotation(tag_levels = "A")  & -->
+<!-- #     theme( -->
+<!-- #         plot.tag = element_text(size = 22, face = "bold" ), -->
+<!-- #         text = element_text(size = 14) -->
+<!-- #     ) -->
+<!-- # png( -->
+<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/HH_DHT.png", -->
+<!-- #     width = 320, height =180, units='mm', res = 300 -->
+<!-- # ) -->
+<!-- # HH_DHT -->
+<!-- # dev.off() -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # p1 <- plot_gene_contribution( -->
+<!-- #     HIF_genePert %>% -->
+<!-- #         .[rownames(.) %in% HIF_gene, colnames(.) %in% ductal_DHT_sample], -->
+<!-- #     filterBy = "mean", -->
+<!-- #     annotation_df = anno_df_HIF, -->
+<!-- #     mapEntrezID = entrez2name, -->
+<!-- #     topGene = 20, -->
+<!-- #     annotation_colors = list( -->
+<!-- #         `Z Range` = setNames( -->
+<!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HIF$`Z Range`))), -->
+<!-- #             levels(anno_df_HIF$`Z Range`) -->
+<!-- #         )), -->
+<!-- #     clustering_method = "average", -->
+<!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), -->
+<!-- #     cutree_rows = 2, -->
+<!-- #     breaks = seq(-0.00025, 0.00025, length.out = 100) -->
+<!-- #     ) %>% -->
+<!-- #     as.ggplot() -->
+<!-- # p2 <- HIF_box -->
+<!-- # HIF_DHT <- (( p1 | p2) + -->
+<!-- #                   plot_layout(widths = c(0.3, 0.2))) + -->
+<!-- #     plot_annotation(tag_levels = "A")  & -->
+<!-- #     theme( -->
+<!-- #         plot.tag = element_text(size = 22, face = "bold" ), -->
+<!-- #         text = element_text(size = 14) -->
+<!-- #     ) -->
+<!-- # png( -->
+<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/HIF_DHT.png", -->
+<!-- #     width = 320, height =180, units='mm', res = 300 -->
+<!-- # ) -->
+<!-- # HIF_DHT -->
+<!-- # dev.off() -->
+<!-- ``` -->
+
+## Lipid and atherosclerosis
+
+```{r}
+# p1 <- plot_gene_contribution(
+#     Lipid_genePert %>%
+#         .[rownames(.) %in% Lipid_gene, colnames(.) %in% ductal_DHT_sample],
+#     filterBy = "max.abs",
+#     annotation_df = anno_df_Lipid,
+#     mapEntrezID = entrez2name,
+#     topGene = 13,
+#     annotation_colors = list(
+#
+#         `Z Range` = setNames(
+#             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Lipid$`Z Range`))),
+#             levels(anno_df_Lipid$`Z Range`)
+#         )),
+#     color = rev(divergex_hcl(100, palette = "RdBu")),
+#     cutree_rows = 2,
+#     breaks = seq(-0.00012, 0.00012, length.out = 100)
+#     ) %>%
+#     as.ggplot()
+# p2 <- Lipid_box
+# Lipid_DHT <- (( p1 | p2) +
+#                   plot_layout(widths = c(0.25, 0.2))) +
+#     plot_annotation(tag_levels = "A")  &
+#     theme(
+#         plot.tag = element_text(size = 22, face = "bold" ),
+#         text = element_text(size = 14)
+#     )
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/Lipid_DHT.png",
+#     width = 330, height =180, units='mm', res = 300
+# )
+# Lipid_DHT
+# dev.off()
+```
+
+```{r}
+lipid_apop_overlap <- gsTopology %>%
+    .[names(.) %in% c(
+        "kegg.Apoptosis", "kegg.Lipid and atherosclerosis"
+    )] %>%
+    lapply(rownames) %>%
+    fromList() %>%
+    set_colnames(str_remove_all(colnames(.), "kegg.")) %>%
+    upset(
+        sets = colnames(.),
+        nintersects = NA,
+        queries = list(
+          list(query = intersects,
+               params = list("Apoptosis",  "Lipid and atherosclerosis"),
+               color = "orange",
+               active = T))
+
+    )
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/lipid_apop_overlap.png",
+#     width = 200, height =100, units='mm', res = 300
+# )
+# lipid_apop_overlap
+# dev.off()
+```
+
+## Public AR signature
+
+```{r}
+# public_AR <- (ar_sig_box / vasiliou_box
+#           ) +
+#     plot_layout(guides = "collect",
+#                 heights = c(3,2)) +
+#     plot_annotation(
+#         tag_levels = "A"
+#     ) &
+#     theme(
+#         plot.tag = element_text(size = 35, face = "bold" )
+#     )
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/public_AR.png",
+#     width = 300, height =370, units='mm', res = 300
+# )
+# public_AR
+# dev.off()
+```
+
+## Fig 5
+
+```{r}
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/cell_line_meta.png",
+#     width = 700, height =650, units='mm', res = 300
+# )
+# hp <- DHT_4data %>%
+#     mutate(
+#         gs_name = str_remove_all(gs_name, "kegg."),
+#         rankStat = -sign(`t statistic`) * log10(`P-value`)) %>%
+#     dplyr::filter(gs_name %in% dht_ductual_final) %>%
+#     dplyr::select(gs_name, Type, `t statistic`) %>%
+#     mutate(
+#         Type = ifelse(Type == "DHT_infiltrating", "Ductal-like PDE", Type),
+#         Type = ifelse(Type == "DHT_invasive", "Lobular-like PDE", Type)
+#         # gs_name = str_wrap(gs_name, 25)
+#     ) %>%
+#     pivot_wider(
+#         names_from = "Type",
+#         values_from = "t statistic"
+#     ) %>%
+#     mutate(gs_name = str_wrap(gs_name, 25)) %>%
+#     column_to_rownames("gs_name") %>%
+#     #dplyr::select(-DHT_invasive) %>%
+#     ComplexHeatmap::Heatmap(
+#         col = rev(divergex_hcl(100, palette = "RdBu")),
+#         row_split = 2,
+#         column_split = 2,
+#         width = unit(400, "mm"),
+#         height = unit(400, "mm"),
+#         heatmap_legend_param = list(
+#             title = "T-statistic",
+#             direction = "horizontal",
+#             labels_gp = gpar(fontsize = 35),
+#             grid_height = unit(2, "cm")
+#         ),
+#         row_names_gp = gpar(fontsize = 40),
+#         column_names_gp = gpar(fontface = c("plain","plain", "plain","plain", "bold","bold"), fontsize = 40),
+#         row_title=NULL,
+#         column_title = NULL
+#
+#     )
+# ComplexHeatmap::draw(hp,
+#                      heatmap_legend_side = "top",
+#                      legend_title_gp = gpar(fontsize = 45, fontface = "bold"))
+#
+# # dev.off()
+```
+
+## Combination treatment
+
+```{r}
+ductal_2treat %>%
+    dplyr::filter(group == "DHT & E2+DHT") %>%
+    mutate(gs_name = str_remove_all(gs_name, "kegg.")) %>%
+    ggplot(
+        aes(Comparison, gs_name, fill = `t statistic`)
+    ) +
+    geom_tile() +
+    scale_fill_distiller(palette = "RdBu",
+                         limit = c(-5, 5),
+                         name = "T-statistic") +
+    labs( x= "",  y = "")
+```
+

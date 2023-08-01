@@ -1,0 +1,1400 @@
+---
+title: "ER_signal"
+output: html_document
+date: "2022-09-09"
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  fig.width = 10
+)
+```
+
+```{r packages}
+library(tidyverse)
+library(yaml)
+library(scales)
+library(pander)
+library(AnnotationHub)
+library(ggraph)
+library(igraph)
+library(ensembldb)
+library(cowplot)
+library(magrittr)
+library(sSNAPPY)
+library(cqn)
+library(DT)
+library(multcomp)
+library(rvest)
+library(ggfortify)
+library(xml2)
+library(org.Hs.eg.db)
+library(lme4)
+library(colorspace)
+library(lmerTest)
+library(reactable)
+library(corrplot)
+library(scatterpie)
+library(htmltools)
+library(RColorBrewer)
+library(pathview)
+library(ggplotify)
+library(msigdbr)
+library(clusterProfiler)
+library(patchwork)
+source(here::here("analysis/smallFunctions/make_gsNetwork.R"))
+```
+
+```{r options}
+panderOptions("table.split.table", Inf)
+panderOptions("big.mark", ",")
+theme_set(theme_bw())
+```
+
+```{r config}
+config <- here::here("config/config.yml") %>%
+  read_yaml()
+suffix <- paste0(config$tag)
+sp <- config$ref$species %>%
+  str_replace("(^[a-z])[a-z]*_([a-z]+)", "\\1\\2") %>%
+  str_to_title()
+```
+
+# Setup
+
+## Gene Annotations
+
+```{r ah}
+ah <- AnnotationHub() %>%
+  subset(rdataclass == "EnsDb") %>%
+  subset(str_detect(description, as.character(config$ref$release))) %>%
+  subset(genome == config$ref$build)
+stopifnot(length(ah) == 1)
+```
+
+```{r ensDb}
+ensDb <- ah[[1]]
+genesGR <- read_rds(here::here("output/genesGR.rds"))
+```
+
+## Sample metadata and merged counts
+
+Sample metadata and merged counts were read in and filtered as in the dge_analysis.Rmd. DGElists were formed for tumor samples and `cqn` was applied for biases introduced by systematic artefacts.
+
+```{r init_cellType}
+init_cellType <- read_delim(here::here("config/sample_meta.txt"), delim = "\t")
+init_cellType <- init_cellType %>%
+    mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex("Stroma", ignore_case = T)), TRUE, FALSE), 
+           Epithelial = ifelse(str_detect(Dominant_cell_type, regex("Epithelial", ignore_case = T)), TRUE, FALSE), 
+           Ducts = ifelse(str_detect(Dominant_cell_type, regex("ducts", ignore_case = T)), TRUE, FALSE), 
+           Fat = ifelse(str_detect(Dominant_cell_type, regex("fat", ignore_case = T)), TRUE, FALSE), 
+           patient = str_replace(patient, "TH", "TH-")) %>%
+    pivot_longer(c("Stroma", "Epithelial", "Ducts", "Fat"),
+                 names_to = "cell_type", 
+                 values_to = "TF") %>%
+    mutate(cell_type = ifelse(TF, cell_type, NA)) %>%
+    dplyr::select(-c("TF", "Dominant_cell_type")) %>%
+    .[!is.na(.$cell_type),] %>%
+    chop("cell_type") %>%
+    mutate(cell_type = vapply(.$cell_type, function(x){
+        paste(x,collapse = ";")
+    }, character(1)))
+    
+```
+
+```{r samples}
+samples <- config$samples %>%
+  here::here() %>%
+  read_tsv() %>%
+    left_join(init_cellType) %>%
+  mutate(
+    Filename = paste0(sample, ".r_1"), 
+    condition = ifelse(Tumor, 
+                       paste("Tumor", treat, sep = "_"), 
+                       paste("Normal", treat, sep = "_")), 
+    patient = vapply(.$patient, function(x){str_split(x, "-")[[1]][2]}, character(1)), 
+    patient = ifelse(Tumor, 
+                       paste("Tumor", patient, sep = "-"), 
+                       paste("Normal",patient, sep = "-")), 
+    desc = paste(patient, treat, sep = " ")
+  ) %>%
+  dplyr::select(-c("name", "sample")) %>%
+  dplyr::rename(name = desc) %>%
+  mutate_if(
+    function(x){length(unique(x)) < length(x)},
+    as.factor
+  ) %>%
+  mutate(
+    treat = relevel(treat, ref = "Veh")
+  )
+```
+
+```{r mergedSamples}
+mergedSamples <- samples %>%
+  group_by(name, patient, treat, Tumor, cell_type, Tissue_type, Age, Diagnosis) %>%
+  tally()
+tumor_sample <- mergedSamples %>%
+  dplyr::filter(Tumor == TRUE) %>%
+    droplevels()
+```
+
+```{r}
+tumor_sample <- tumor_sample %>%
+    dplyr::mutate(
+        Diagnosis = ifelse(
+            str_detect(Diagnosis, "invasive"), 
+            "ILC-like", "IDC-like"
+        ),
+        Diagnosis = ifelse(
+            patient == "Tumor-8", 
+            "IDC-like", 
+            Diagnosis
+        ), 
+        Diagnosis = as.factor(Diagnosis)
+    )
+```
+
+
+```{r set_cols}
+treat_cols <- c(
+  Veh = rgb(0.7, 0.7, 0.7),
+  DHT = rgb(0.8, 0.2, 0.2),
+  E2 = rgb(0.2, 0.2, 0.8),
+  `E2+DHT` = rgb(1, 0.4, 1)
+)
+tumor_cols <- hcl.colors(
+  n = length(unique(samples$Tumor)), 
+  palette = "Zissou 1"
+  ) %>%
+  setNames(unique(samples$Tumor))
+patient_cols <- hcl.colors(
+  n = length(levels(mergedSamples$patient)), 
+  palette = "Spectral"
+  ) %>%
+  setNames(levels(mergedSamples$patient))
+diag_cols <- readRDS("~/GSE800098/output/diag_cols.rds")
+```
+
+```{r treat_shapes}
+treat_shapes <- c(
+  Veh = 1,
+  DHT = 19,
+  E2 = 15,
+  `E2+DHT` = 17
+)
+```
+
+```{r counts}
+# counts <- here::here("data/aligned/counts/counts.out.gz") %>%
+#   gzfile() %>%
+#   read_tsv(comment = "#") %>%
+#   dplyr::select(Geneid, ends_with("bam")) %>%
+#   rename_at(vars(ends_with("bam")), dirname) %>%
+#   rename_all(basename) %>%
+#   column_to_rownames("Geneid")
+```
+
+```{r mergedCounts}
+# mergedCounts <- counts %>%
+#   rownames_to_column("gene_id") %>%
+#   pivot_longer(
+#     cols = -gene_id,
+#     names_to = "Filename",
+#     values_to = "counts"
+#   ) %>%
+#   left_join(samples, by = "Filename") %>%
+#   group_by(
+#     gene_id, name, patient, treat, Tumor) %>%
+#   summarise(counts = sum(counts), .groups = "drop") %>%
+#   pivot_wider(
+#     id_cols = gene_id,
+#     values_from = counts,
+#     names_from = name
+#   ) %>%
+#   column_to_rownames("gene_id")
+# saveRDS(mergedCounts, here::here("data/mergedCounts.rds"))
+mergedCounts <- readRDS(here::here("data/mergedCounts.rds"))
+```
+
+```{r rm_counts, echo=FALSE}
+rm(samples)
+gc()
+```
+
+The filtered and normalised `DGEList` was loaded in. 
+
+```{r dge}
+dge_tumor <- readRDS(here::here("output/dge_tumor.rds"))
+```
+
+```{r cqn}
+cqNorma_tumor <- with(
+  dge_tumor,
+  cqn(
+    counts= counts,
+    x = genes$gc_content,
+    lengths = genes$ave_tx_len
+  )
+)
+dge_tumor$offset <- cqNorma_tumor$glm.offset
+logCPM_tumor <- cqNorma_tumor$y + cqNorma_tumor$offset
+```
+
+```{r pcaPost}
+pcaPost_tumor <- logCPM_tumor %>%
+  t() %>%
+  prcomp() 
+```
+
+```{r}
+gsTopology <- retrieve_topology(database = "kegg", species = "hsapiens")
+logCPM_tumor2 <- logCPM_tumor
+rownames(logCPM_tumor2) <- mapIds(ensDb,rownames(logCPM_tumor), "ENTREZID", keytype = "GENEID")
+logCPM_tumor2 <- logCPM_tumor2[!is.na(rownames(logCPM_tumor2)),]
+ssFC_tumor <- sSNAPPY::weight_ss_fc(logCPM_tumor2, tumor_sample, groupBy = "patient", treatColumn = "treat", sampleColumn = "name")
+ssFC_tumor <- ssFC_tumor$weighted_logFC/ssFC_tumor$weight
+weightedFC_tumor <- sSNAPPY::weight_ss_fc(logCPM_tumor2, tumor_sample, groupBy = "patient", treatColumn = "treat", sampleColumn = "name")
+genePertScore_tumor <- raw_gene_pert(weightedFC_tumor$weighted_logFC, gsTopology)
+```
+
+```{r formatP}
+formatP <- function(p, m = 0.0001){
+out <- rep("", length(p))
+out[p < m] <- sprintf("%.2e", p[p<m])
+out[p >= m] <- sprintf("%.4f", p[p>=m])
+out
+}
+```
+
+Outputs of `sSNAPPY` workflow for tumor samples were read in.
+
+```{r}
+treat_sig_tumor <- readRDS(here::here("output/treat_sig_tumor.rds"))
+normalised_tumor <- readRDS(here::here("output/normalisedScores_tumor.rds"))
+```
+
+```{r}
+normalised_tumor_mat <- normalised_tumor %>%
+    dplyr::select(gs_name, sample, robustZ) %>%
+    pivot_wider(
+        names_from = "sample", 
+        values_from = "robustZ"
+    ) %>%
+    column_to_rownames("gs_name")
+    
+```
+
+```{r}
+new_diag_col <- qualitative_hcl(2, palette = "Dark 3") %>%
+    set_names(c("IDC-like", "ILC-like"))
+new_treat_col <- qualitative_hcl(4, palette = "Dynamic") %>%
+    set_names(levels(tumor_sample$treat))
+```
+
+```{r}
+ssFC_tumor_df <- ssFC_tumor %>%
+    as.data.frame() %>%
+    rownames_to_column("entrezid") %>%
+    mutate(
+        entrezid = str_remove_all(entrezid, "ENTREZID.")
+    ) %>%
+    left_join(
+        genesGR %>%
+            as.data.frame() %>%
+            unnest(entrezid) %>%
+            mutate(entrezid = as.character(entrezid)) %>%
+            dplyr::select(entrezid, gene_name)
+    ) %>%
+    pivot_longer(
+        cols = contains("Tumor"), 
+        names_to = "name", 
+        values_to = "ssFC"
+    ) %>%
+    left_join(
+        tumor_sample
+    ) 
+```
+
+```{r}
+load(system.file("extdata", "entrez2name.rda", package = "sSNAPPY"))
+```
+
+```{r}
+logCPM_tumor_df <- logCPM_tumor %>%
+    as.data.frame() %>%
+    rownames_to_column("gene_id") %>%
+    pivot_longer(
+        cols = -"gene_id", 
+        names_to = "name", 
+        values_to = "logCPM"
+    ) %>%
+    left_join(
+        tumor_sample
+    ) %>%
+    left_join(
+        dge_tumor$genes %>%
+            dplyr::select(gene_id, gene_name)
+    )
+```
+
+
+```{r}
+normalised_tumor_df <- normalised_tumor %>%
+    dplyr::select(sample, gs_name, robustZ) %>%
+    pivot_wider(
+        names_from = "gs_name", 
+        values_from = "robustZ"
+    )
+```
+
+
+# E2 response
+
+```{r}
+lobular_E2_sample <- tumor_sample %>%
+    ungroup() %>%
+    dplyr::filter(
+        treat == "E2", 
+        Diagnosis == "ILC-like"
+    ) %>%
+    pull(name)
+```
+
+```{r}
+e2_lobular_gs <- treat_sig_tumor %>%
+    dplyr::filter(
+        Comparison ==  "E2_invasive", 
+        FDR < 0.05) 
+e2_lobular_gs <- pull(e2_lobular_gs, `t statistic`) %>%
+    set_names(e2_lobular_gs$gs_name)
+```
+
+`r length(e2_lobular_gs)` pathways were significantly perturbed by E2 in the lobular-like group, forming 2 main communities. 
+
+```{r, fig.cap="*A network of KEGG pathways significantly perturbed by E2 lobular-like PDEs.*"}
+set.seed(123)
+treat_sig_tumor %>%
+    dplyr::filter(
+        Comparison == "E2_invasive", 
+        FDR < 0.05
+    ) %>%
+    mutate(Status = ifelse(`t statistic` < 0, "Inhibited", "Activated")) %>%
+    plot_community(
+        gsTopology = gsTopology, 
+        colorBy = "Status", 
+        layout = "kk",
+        communityMethod = "leiden"
+    ) +
+    scale_color_manual(
+        values = c("Inhibited" = "navyblue", "Activated" = "darkred"),
+         name = "Pathway Status"
+    ) +
+    scale_fill_discrete_divergingx(palette = "Fall") +
+    theme(
+        panel.border  = element_blank(), 
+        legend.key.size = unit(10, "mm"), 
+        legend.text = element_text(size = 9),
+        legend.title = element_text(size = 11),
+        legend.margin=margin(0,0,0,0)
+        # legend.position = "top", 
+        # legend.justification = "right"
+    )
+```
+
+## Cell Cycle
+
+11 key genes potentially driving the activation of the Cell cycle pathway were identified, among which genes PLK1 and CDK1 played the most important roles (i.e. highest mean gene-wise perturbation scores). Both
+PLK1 (Polo-like kinase 1) and CDK1 (Cyclin-dependent kinase 1) are essential regulatory proteins involved in promoting cell cycle progression, and the dysregulation of these two genes has been linked to BC tumour growth.
+
+```{r}
+CC_genePert <-  genePertScore_tumor$`kegg.Cell cycle`
+CC_path <- normalised_tumor_mat %>%
+    .["kegg.Cell cycle", colnames(.) %in% lobular_E2_sample]
+CC_gene <- CC_genePert %>%
+        .[, colnames(.) %in% lobular_E2_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) %in% c(-4, 4)}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(CC_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+```
+
+```{r, fig.cap="*Gene-wise perturbation scores of the 11 key Cell cycle pathway genes potentially driving the activation of the pathway in E2-treated ILC-like tumours, where the columns are annotated with pathway-level perturbation scores.*"}
+anno_df_CC <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Cell cycle`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    CC_genePert %>%
+        .[rownames(.) %in% CC_gene, colnames(.) %in% lobular_E2_sample],
+    annotation_df = anno_df_CC, 
+    mapEntrezID = entrez2name, 
+    topGene = length(CC_gene),
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_CC$`Z Range`))),
+            levels(anno_df_CC$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    breaks = seq(-0.001, 0.001, length.out = 100), 
+    cutree_rows = 2
+    ) 
+```
+
+ Although not statistically significant in the DE analyses, the median single-sample logFC (ssFC) of *PLK1* and *CDK1* was positive in both IDC- and ILC-like tumours after the E2 treatment. But the magnitudes of increase in expression were greater in ILC-like tumours.
+
+```{r, fig.height=4, fig.width=10}
+CC_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% CC_gene
+    ) %>%
+    pull(mapTo)
+CC_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% c("PLK1", "CDK1"), 
+        treat == "E2"
+        ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+CC_box
+```
+
+
+## Apoptosis
+
+Using the same strategy, 5 potential candidates (CHUK, FADD, IL3RA, MAPK9, and TNFRSF10B ) driving the inhibition of the Apoptosis pathway in ILC-like tumours uponER activation were selected. All 5 genes had negative median ssFC in E2-treated ILC-like tumours, while the median ssFC of gene CHUK and IL3RA are positive in IDC-like tumours post E2 treatment. 
+
+```{r}
+Apop_genePert <-  genePertScore_tumor$`kegg.Apoptosis`
+Apop_path <- normalised_tumor_mat %>%
+    .["kegg.Apoptosis", colnames(.) %in% lobular_E2_sample]
+Apop_gene <- Apop_genePert %>%
+        .[, colnames(.) %in% lobular_E2_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) %in% c(-4, 4)}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(Apop_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+```
+
+```{r}
+anno_df_Apop <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Apoptosis`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    Apop_genePert %>%
+        .[rownames(.) %in% Apop_gene, colnames(.) %in% lobular_E2_sample],
+    filterBy = "max.abs", 
+    annotation_df = anno_df_Apop, 
+    mapEntrezID = entrez2name, 
+    topGene = 10,
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Apop$`Z Range`))),
+            levels(anno_df_Apop$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    breaks = seq(-8.526216e-05, 8.526216e-05, length.out = 100)
+    ) 
+```
+
+```{r}
+Apop_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% Apop_gene
+    ) %>%
+    pull(mapTo)
+apop_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% setdiff(Apop_gene_name, "MAPK8"), 
+        treat == "E2"
+        ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+apop_box
+```
+
+## JAK-STAT signaling pathway
+
+In addition to the two cell death-related pathways, the three other pathways that were inhibited in E2-treated ILC-like tumours were related to signal transduction. Firstly, the JAK-STAT signalling pathway, a crucial intracellular signalling cascade that influences diverse cellular processes such as proliferation, differentiation, and immune responses, was predicted to be inhibited. Since the KEGG JAK-STAT signalling pathway involves
+various processes, to elucidate the biological meaning of the observed inhibition, the functional roles of pathway genes making the largest contribution to the altered pathway activity were inspected. 6 genes with negative gene-wise perturbation scores across all E2-treated lobular-like samples that are potentially the main drivers behind the inhibition of the JAK-STAT pathway were selected. 
+
+
+```{r}
+JAK_genePert <-  genePertScore_tumor$`kegg.JAK-STAT signaling pathway`
+JAR_path <- normalised_tumor_mat %>%
+    .["kegg.JAK-STAT signaling pathway", colnames(.) %in% lobular_E2_sample]
+JAR_gene <- JAK_genePert %>%
+        .[, colnames(.) %in% lobular_E2_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) %in% c(-4, 4)}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(JAR_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+```
+
+
+While many of the identified driver genes are involved in the upstream cytokine-cytokine receptor interaction processes, the cell cycle inhibitor gene *CDKN1A* (also known as p21 ) was also on the list.
+Although not statistically significant, the median ssFC of *CDKN1A* was negative in both groups of E2-treated tumours, indicating potential down-regulation of this cell cycle inhibitor gene upon the E2 treatment. Therefore, the inhibition of the JAK-STAT pathway likely reflects the down-regulation of the cell cycle inhibition process, aligning with the observed activation of the Cell cycle and inhibition of the Apoptosis pathway.
+
+
+```{r}
+anno_df_jak <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.JAK-STAT signaling pathway`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    JAK_genePert %>%
+        .[rownames(.) %in% JAR_gene, colnames(.) %in% lobular_E2_sample],
+    filterBy = "max.abs", 
+    annotation_df = anno_df_jak, 
+    mapEntrezID = entrez2name, 
+    topGene = 10,
+    annotation_colors = list(
+       
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_jak$`Z Range`))),
+            levels(anno_df_jak$`Z Range`)
+        )), 
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    breaks = seq(-0.00003, 0.00003, length.out = 100)
+    ) 
+```
+
+
+```{r}
+# pathview(gene.data  =  ssFC_tumor %>%
+#              .[rownames(.) %in% JAR_gene, colnames(.) %in% lobular_E2_sample] %>%
+#              apply(., 1, median) %>%
+#              set_names(
+#                  str_remove_all(
+#                      names(.), "ENTREZID:"
+#                  )
+#              ),
+#          pathway.id = "04630",
+#          species    = "hsa",
+#          kegg.dir = here::here("figure/"),
+#          low = list(gene ="skyblue", cpd = "black"),
+#          mid = list(gene ="grey", cpd = "black"),
+#          high = list(gene ="red", cpd = "black"),
+#          )
+knitr::include_graphics(
+    "/Users/wenjunliu/20131906_HickeyT_JC_NormalBreast/pathview_figure/JAKSAT.png", 
+    error = FALSE
+)
+```
+
+```{r, fig.height=4, fig.width=5}
+CDKN1A_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name == "CDKN1A", 
+        treat == "E2"
+        ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+CDKN1A_box
+```
+
+
+## WNT signaling
+
+We inspected the main driver genes behind the inhibition of the WNT signalling pathway in our E2-treated ILC-like tumours and found the involvement of three WNT family genes (*WNT2B, WNT9A*, and *WNT7B*).
+
+```{r}
+WNT_genePert <-  genePertScore_tumor$`kegg.Wnt signaling pathway`
+WNT_path <- normalised_tumor_mat %>%
+    .["kegg.Wnt signaling pathway", colnames(.) %in% lobular_E2_sample]
+WNT_gene <- WNT_genePert %>%
+        .[, colnames(.) %in% lobular_E2_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) %in% c(-4, 4)}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(WNT_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+WNT_gene <- intersect(WNT_gene, rownames(ssFC_tumor))
+```
+
+```{r}
+anno_df_WNT <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Wnt signaling pathway`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    WNT_genePert %>%
+        .[rownames(.) %in% WNT_gene, colnames(.) %in% lobular_E2_sample],
+    filterBy = "mean", 
+    annotation_df = anno_df_WNT, 
+    mapEntrezID = entrez2name, 
+    topGene = 10,
+    annotation_colors = list(
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_WNT$`Z Range`))),
+            levels(anno_df_WNT$`Z Range`)
+        )), 
+    clustering_method = "average",
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    breaks = seq(-0.00003, 0.00003, length.out = 100)
+    ) 
+```
+
+```{r}
+wnt_complex <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% WNT_gene, 
+        str_detect(mapTo, "WNT")
+    ) %>%
+    pull(mapTo)
+wnt_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% c(wnt_complex, "WNT4"), 
+        treat == "E2"
+        ) %>%
+    mutate(
+        gene_name = factor(gene_name, levels = c("WNT2B" ,"WNT7B", "WNT9A", "WNT4"))) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    scale_alpha_manual(name = "Subtype", values = c(.3, 1), 
+                       guide = FALSE) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+wnt_box
+```
+
+## HIF signalling pathway
+
+Lastly, the HIF-1 signalling pathway was also significantly inhibited in ILC-like tumours as a response to ER activation. The two potential driver genes found for the HIF-1 signalling pathway are *AKT3* and *MKNK1*.
+
+```{r}
+HIF_genePert <-  genePertScore_tumor$`kegg.HIF-1 signaling pathway`
+HIF_path <- normalised_tumor_mat %>%
+    .["kegg.HIF-1 signaling pathway", colnames(.) %in% lobular_E2_sample]
+HIF_gene <- HIF_genePert %>%
+        .[, colnames(.) %in% lobular_E2_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == -4}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(HIF_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+HIF_gene <- intersect(HIF_gene, rownames(ssFC_tumor))
+```
+
+
+```{r}
+anno_df_HIF <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.HIF-1 signaling pathway`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    HIF_genePert %>%
+        .[rownames(.) %in% HIF_gene, colnames(.) %in% lobular_E2_sample],
+    filterBy = "mean", 
+    annotation_df = anno_df_HIF, 
+    mapEntrezID = entrez2name, 
+    topGene = 10,
+    annotation_colors = list(
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HIF$`Z Range`))),
+            levels(anno_df_HIF$`Z Range`)
+        )), 
+    clustering_method = "average",
+    color = rev(divergex_hcl(100, palette = "RdBu")), 
+    breaks = seq(-0.00003, 0.00003, length.out = 100)
+    ) 
+```
+
+```{r, fig.height=4, fig.width=10}
+HIF_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% HIF_gene
+    ) %>%
+    pull(mapTo)
+hif_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% HIF_gene_name, 
+        treat == "E2"
+        ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+hif_box
+```
+
+# Compare to Public Data
+
+## Sikora et al. ILC-specific E2 responses
+
+```{r}
+library(readxl)
+ILC_E2_public_full <- read_excel(
+        here::here("data/Sikora_ILC_E2_sig.xlsx"), 
+        sheet = 6
+    ) %>%
+    dplyr::rename(
+        gene_name = `Gene Symbol`
+    ) %>%
+    left_join(
+        genesGR %>%
+            as.data.frame() %>%
+            dplyr::select(gene_id, gene_name)
+    ) %>%
+    drop_na() 
+```
+
+
+In [*Invasive Lobular Carcinoma Cell Lines Are Characterized by Unique Estrogen-Mediated Gene Expression Patterns and Altered Tamoxifen Response*](https://aacrjournals.org/cancerres/article/74/5/1463/599347/Invasive-Lobular-Carcinoma-Cell-Lines-Are), ILC cell lines MM134 and SUM44 were treated with 1 nmol/L E2 for 3 or 24 hours, prior to microarray was performed. DEGs derived from those two cell lines were compared against public data for three ER-pos IDC cell lines, and a list of `r nrow(ILC_E2_public_full$ILC_specific)` ILC-specific DEGs were found. 
+
+```{r}
+# require(GEOquery)
+# require(Biobase)
+# library(biomaRt)
+# gset <- getGEO("GSE50693", GSEMatrix =TRUE, getGPL=FALSE)
+# gset <- gset[[1]]
+# mart <- useMart("ENSEMBL_MART_ENSEMBL")
+# mart <- useDataset("hsapiens_gene_ensembl", mart)
+# total_range <- seq_len(nrow(exprs(gset)))
+# sequence_size <- length(total_range) / 8
+# # Use the split function to break the sequence into 8 smaller sequences
+# smaller_sequences <- split(total_range, rep(1:8, each = sequence_size, length.out = length(total_range)))
+# library(BiocParallel)
+# param <- SnowParam(
+#     workers = 8, 
+#     type = "SOCK"
+# )
+# annotLookup <- lapply(smaller_sequences, function(x){
+#     getBM(
+#         mart=mart,
+#         attributes=c(
+#             "affy_hg_u133a_2",
+#             "external_gene_name"),
+#         filter = "affy_hg_u133a_2",
+#         values = rownames(exprs(gset))[x], uniqueRows=TRUE)
+# })
+# annotLookup <- bind_rows(annotLookup)
+# saveRDS(annotLookup, file = here::here("data/affy_to_name.rds"))
+annotLookup <- readRDS(here::here("data/affy_to_name.rds"))
+allGENE <- annotLookup %>% pull(external_gene_name) %>% unique()
+```
+
+
+`GOseq` was used to perform an over-representation analysis on those ILC-specific E2-regulated genes. Since only differentially expressed genes were provided in the supplementary table, the background gene-set was derived by: 
+1. Retrieve the series matrix file from GEO using `getGEO()`. 
+2. Match the U133A 2.0 array probe annotations to ensembl gene names using `biomaRt`'s `getBM()` function. 
+
+`r length(allGENE)` genes were considered to be the background gene. 
+
+##### ORA with `GOseq`
+
+`GOseq` was used to test for enrichment of KEGG pathways using the hypergeometric method. But none of the pathway passed the FDR < 0.05 significance threshold.
+
+```{r}
+gsTokeep <- readRDS(here::here("output/kg_gsTokeep.rds"))
+kg <- sapply(gsTopology, rownames) %>%
+    do.call(cbind, .) %>%
+    as.data.frame() %>%
+    pivot_longer(
+        cols = everything(),
+        names_to = "gs_name",
+        values_to = "entrezid"
+    ) %>%
+    dplyr::filter(gs_name %in% gsTokeep) %>%
+    left_join(
+        entrez2name %>%
+            dplyr::rename(gene_name = mapTo)
+    ) %>%
+    left_join(genesGR %>%
+                  as.data.frame() %>%
+                  dplyr::select(gene_name, gene_id)) %>%
+    unique() %>%
+    dplyr::select(-entrezid)
+kgByGene <- kg %>%
+    split(f = .$gene_id) %>%
+    lapply(pull, gs_name)
+kgByGS <- kg %>%
+    split(f = .$gs_name) %>%
+    lapply(pull, gene_id)
+```
+
+```{r goseq}
+library(goseq)
+pwf <- genesGR %>%
+    as.data.frame() %>%
+    distinct(gene_id, .keep_all = TRUE) %>%
+    dplyr::select(gene_id, ave_tx_len) %>%
+    mutate(Status = case_when(gene_id %in% ILC_E2_public_full$gene_id  ~ 1, !gene_id %in% ILC_E2_public_full$gene_id   ~ 0)) %>%
+    with(
+      nullp(
+        DEgenes = structure(
+          Status, names = gene_id
+        ),
+        genome = "GRCh38.p16",
+        id = "ensGene",
+        bias.data =ave_tx_len,
+        plot.fit = FALSE
+      )
+    )
+goseq <- goseq(
+               gene2cat = kgByGene, 
+               pwf = pwf,
+               method =  "Hypergeometric") %>%
+  as_tibble() %>%
+  dplyr::filter(numDEInCat > 0) %>%
+  mutate(
+    FDR_over = p.adjust(over_represented_pvalue, method = "fdr"),
+    FDR_under = p.adjust(under_represented_pvalue, method = "fdr")
+  ) %>%
+  dplyr::rename(
+    gs_name = category,
+    nDE = numDEInCat,
+    nExpressed = numInCat
+  ) %>%
+  left_join(kg) %>%
+  dplyr::select(
+    gs_name, nExpressed, nDE,
+    contains("pvalue"),
+    contains("FDR"),
+    gene_name, gene_id
+  ) %>%
+  dplyr::filter(
+    gene_id %in% ILC_E2_public_full$gene_id
+  ) %>%
+  chop(c("gene_name", "gene_id")) %>%
+  mutate(
+    gene_name = vapply(.$gene_name, function(x){
+      paste(x,collapse = "; ")
+    }, character(1)),
+    gene_id = vapply(.$gene_id, function(x){
+      paste(x,collapse = "; ")
+    }, character(1))
+  ) %>%
+  dplyr::rename(DE = gene_name) %>%
+  mutate_at(
+    vars(contains(c("pvalue", "FDR"))),
+    formatP)
+```
+
+4 pathways passed the FDR cut-off of 0.05 to be considered as significantly enriched but none of the significantly perturbed pathways we detected in E2-treated ILC-like tumours is on the list. 
+
+
+```{r}
+goseq %>% 
+    dplyr::filter(FDR_over < 0.05)  %>%
+    mutate(
+        gs_name = str_remove_all(gs_name, "kegg.")
+    ) %>%
+    dplyr::select(-contains(c("under", "DE", "gene_id"))) %>%
+    mutate_all(as.factor) %>%
+    datatable(
+        filter = "top", 
+        options = list(scrollY = '350px')
+    )
+```
+
+
+```{r}
+ILC_E2_public <- read_delim(here::here("data/ILC_E2_genes.txt"), col_names = FALSE) %>%
+    set_colnames(c("gene_name", "type")) %>%
+    left_join(
+        genesGR %>%
+            as.data.frame() %>%
+            dplyr::select(gene_name, gene_id)
+    )
+ILC_E2_public_ls <- ILC_E2_public %>% 
+    split(f = .$type)
+```
+
+
+```{r}
+e2_lobular_gs_public <- kg %>%
+    dplyr::filter(
+        gs_name %in% names(e2_lobular_gs)) %>%
+    # dplyr::filter(gene_name %in% ILC_E2_public_full$gene_name)
+    left_join(ILC_E2_public)  %>%
+    drop_na() %>%
+    mutate(
+        gs_name = str_remove_all(gs_name, "kegg."), 
+        color = ifelse(type == "ILC-down", "lightskyblue", "pink"), 
+        type = as.factor(type)) %>%
+    .[order(.$type), ]%>%
+    mutate(gene_name = as.factor(gene_name))
+```
+
+The author curated the most induced and repressed ILC-specific E2-regulated genes into an ILC-E2 gene-set. (Note that the ILC-specific genes were derived by intersecting ILC DEGs with IDC DEGs without considering the directionality). There were a total of `r nrow(ILC_E2_public)` genes in the list, where `r nrow(ILC_E2_public_ls[["ILC-down"]])` were uniquely down-regulated by E2 in the ILC cell lines and `r nrow(ILC_E2_public_ls[["ILC-up"]])` were up-regulated. 
+
+```{r}
+useless_p <- e2_lobular_gs_public %>%
+    mutate(
+        color = ifelse(
+            color == "lightskyblue", "Down-regulated", "Up-regulated"
+        )
+    ) %>%
+    ggplot(
+        aes(type, gs_name, fill = color)
+    ) +
+    geom_tile() +
+    scale_fill_manual(
+        values = c(
+            "Down-regulated" = "lightskyblue", 
+            "Up-regulated" = "pink"
+        ), 
+        name = "Direction of\nE2-regulation in\nILC-cell lines"
+    )
+ILC_e2_both <- c("CDKN1C", "CXXC4","WNT4")
+```
+
+3 of the public ILC-specific E2-responsive genes (*CDKN1C, CXXC4* and *WNT4*) were found to be involved in pathways significantly perturbed in our cohort of E2-treated ILC-like tumours and had directional concordant changes in expression.
+
+```{r, fig.height=4, fig.width=10, fig.cap="*Single-sample logFCs of E2-treated samples for genes that were involved in significant pathway perturbation among ILC-like tumours and were chosen as ILC-specific E2-regulated genes in a public study. Background colors of the gene name strips indicate the directions of changes upon E2 treatment reported in the public data, where blue means E2-repressed and red means E2-induced.*"}
+col <- e2_lobular_gs_public %>%
+    dplyr::select(gene_name, color) %>%
+    unique() %>%
+    .[order(.$gene_name),] %>%
+    pull(color)
+library(ggh4x)
+strips <- strip_themed(
+    background_x = elem_list_rect(
+        fill = adjustcolor(col, alpha.f = 0.5)
+    )
+)
+p1 <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% ILC_e2_both,
+        treat == "E2"
+        ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap2(.~gene_name, 
+               scales = "free_y", 
+               strip = strips) +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    scale_alpha_manual(name = "Subtype", values = c(.3, 1), 
+                       guide = FALSE) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        strip.text = element_text(size = 18), 
+        axis.text.x = element_text(size = 15, 
+                                   colour = new_diag_col)
+    ) +
+    xlab("Predicted Subtype") 
+plot_grid(
+    p1, get_legend(useless_p), 
+    rel_widths = c(9,1)
+)
+```
+
+## Nardone et al. FOXA1-ILC targets
+
+Nardone et al. recently performed a comprehensive epigenome profiling study to compare ILC tumours against IDC and revealed enhanced recruitment of FOXA1, an important regulator of both ER and AR chromatin binding, in ILC. FOXA1 -ER interactions that lead to enhanced tumour progression and unfavourable outcomes were found to be unique to ILC tumours. 59 ILC-specific estrogen-induced FOXA1-targets that were reported by Nardone et al. are involved in pathways that were significantly perturbed by E2 in our ILC-like tumours, including one of the potential inhibitors of the Apoptosis pathway *FADD*.
+
+```{r}
+FOXA1_ILC <- read_csv(here::here("data/FOXA1_ILC.csv")) %>%
+    dplyr::filter(pvalue < 0.05)
+nardone_toPlot <- treat_sig_tumor %>%
+    dplyr::filter(
+        Comparison == "E2_invasive", 
+        FDR < 0.05
+    ) %>%
+    left_join(kg) %>%
+    dplyr::filter(gene_name %in% FOXA1_ILC$gene_name) %>%
+    mutate(gs_name = str_remove_all(gs_name, "kegg.")) %>%
+    dplyr::select(gene_name, gs_name) %>%
+    unique() %>%
+    left_join(
+        entrez2name %>%
+            dplyr::rename(gene_name = mapTo)
+    ) %>%
+    pull(entrezid)
+lobular_e2_fc <- ssFC_tumor %>%
+    .[, colnames(.) %in% lobular_E2_sample] %>%
+    apply(1, median)
+lobular_e2_fcDir <- ifelse(lobular_e2_fc < 0, "Down-regulated", "Up-regualted")
+```
+
+```{r}
+# all_drive <- c(CC_gene, Apop_gene, JAR_gene, WNT_gene, HIF_gene)
+# intersect(all_drive, nardone_toPlot)
+```
+
+```{r, fig.height=10, fig.width=14}
+g <- treat_sig_tumor %>%
+    dplyr::filter(
+        Comparison == "E2_invasive", 
+        FDR < 0.05
+    ) %>%
+    mutate(Status = ifelse(`t statistic` < 0, "Inhibited", "Activated")) %>%
+    plot_gs2gene(
+        gsTopology = gsTopology, 
+        colorGsBy = "Status", 
+        mapEntrezID = entrez2name,
+        layout = "kk",
+        geneFC = lobular_e2_fcDir[nardone_toPlot], 
+        gsNameSize = 4, 
+        gsNodeSize = 6, 
+        geneNameSize = 3, 
+        filterGeneBy = 0,
+    ) +
+    scale_fill_manual(values = c("darkred", "lightskyblue"), name = "Pathway") +
+    scale_colour_manual(values = c("blue", "red"), name = "Gene\nDirection") +
+    theme(panel.border = element_blank(),
+        legend.margin=margin(0,0,0,0))
+g
+```
+
+# Thesis Figure
+
+## Cell Death
+
+```{r}
+# p1 <- plot_gene_contribution(
+#     CC_genePert %>%
+#         .[rownames(.) %in% CC_gene, colnames(.) %in% lobular_E2_sample],
+#     annotation_df = anno_df_CC, 
+#     mapEntrezID = entrez2name, 
+#     topGene = length(CC_gene),
+#     annotation_colors = list(
+#        
+#         `Z Range` = setNames(
+#             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_CC$`Z Range`))),
+#             levels(anno_df_CC$`Z Range`)
+#         )), 
+#     color = rev(divergex_hcl(100, palette = "RdBu")), 
+#     breaks = seq(-0.001, 0.001, length.out = 100), 
+#     cutree_rows = 2
+#     )  %>%
+#     as.ggplot()
+# p2 <- CC_box
+# cell_death <- (( p1 | p2) +
+#                   plot_layout(widths = c(0.4, 0.2))) +
+#     plot_annotation(tag_levels = "A")  &
+#     theme(
+#         plot.tag = element_text(size = 22, face = "bold" ), 
+#         text = element_text(size = 14)
+#     )
+# # png(
+# #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/cell_death.png",
+# #     width = 320, height =150, units='mm', res = 300
+# # )
+# # cell_death
+# # dev.off()
+```
+
+```{r}
+# p3 <- plot_gene_contribution(
+#     Apop_genePert %>%
+#         .[rownames(.) %in% Apop_gene, colnames(.) %in% lobular_E2_sample],
+#     filterBy = "max.abs",
+#     annotation_df = anno_df_Apop,
+#     mapEntrezID = entrez2name,
+#     topGene = 10,
+#     annotation_colors = list(
+# 
+#         `Z Range` = setNames(
+#             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Apop$`Z Range`))),
+#             levels(anno_df_Apop$`Z Range`)
+#         )),
+#     color = rev(divergex_hcl(100, palette = "RdBu")),
+#     breaks = seq(-8.526216e-05, 8.526216e-05, length.out = 100)
+#     )  %>%
+#     as.ggplot()
+# p4 <- apop_box
+# apop_pl <- ( p3 | p4)  +
+#     plot_layout(widths = c(0.5, 0.4)) +
+#     plot_annotation(tag_levels = "A")  &
+#     theme(
+#         plot.tag = element_text(size = 22, face = "bold" ),
+#         text = element_text(size = 14)
+#     )
+# # png(
+# #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/apop_pl.png",
+# #     width = 330, height =180, units='mm', res = 300
+# # )
+# # apop_pl
+# # dev.off()
+```
+
+## JAK-STAT pathway
+
+```{r}
+# library(ggplotify)
+# library(magick)
+# p1 <- plot_gene_contribution(
+#     JAK_genePert %>%
+#         .[rownames(.) %in% JAR_gene, colnames(.) %in% lobular_E2_sample],
+#     filterBy = "max.abs",
+#     annotation_df = anno_df_jak,
+#     mapEntrezID = entrez2name,
+#     topGene = 10,
+#     annotation_colors = list(
+# 
+#         `Z Range` = setNames(
+#             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_jak$`Z Range`))),
+#             levels(anno_df_jak$`Z Range`)
+#         )),
+#     color = rev(divergex_hcl(100, palette = "RdBu")),
+#     breaks = seq(-0.00003, 0.00003, length.out = 100)
+#     ) %>%
+#     as.ggplot()
+# p2 <- image_read(
+#     here::here("pathview_figure/JAKSAT.png"))%>%
+#     image_ggplot()
+# p3 <- CDKN1A_box
+```
+
+```{r}
+# jaksat <-(( p1 | p3) +
+#               plot_layout(widths = c(0.9, 0.2))) / p2 +
+#      plot_layout(
+#          heights = c(0.3, 0.7)) +
+#     plot_annotation(tag_levels = "A")  &
+#     theme(
+#         plot.tag = element_text(size = 22, face = "bold" ),
+#         text = element_text(size = 14)
+#     )
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/JAKSAT.png",
+#     width = 250, height =300, units='mm', res = 300
+# )
+# jaksat
+# dev.off()
+```
+
+## WNT signaling pathway
+
+```{r}
+# p1 <- plot_gene_contribution(
+#     WNT_genePert %>%
+#         .[rownames(.) %in% WNT_gene, colnames(.) %in% lobular_E2_sample],
+#     filterBy = "mean", 
+#     annotation_df = anno_df_WNT, 
+#     mapEntrezID = entrez2name, 
+#     topGene = 13,
+#     annotation_colors = list(
+#         `Z Range` = setNames(
+#             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_WNT$`Z Range`))),
+#             levels(anno_df_WNT$`Z Range`)
+#         )), 
+#     clustering_method = "average",
+#     color = rev(divergex_hcl(100, palette = "RdBu")), 
+#     breaks = seq(-0.00003, 0.00003, length.out = 100)
+#     )   %>%
+#     as.ggplot()
+# p2 <- wnt_box
+```
+
+```{r}
+# wnt_plot <- (p1 | p2) +
+#     plot_layout(widths = c(0.6, 0.4)) +
+#     plot_annotation(tag_levels = "A")  &
+#     theme(
+#         plot.tag = element_text(size = 22, face = "bold" ), 
+#         text = element_text(size = 14)
+#     )
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/wnt_plot.png",
+#     width = 300, height =150, units='mm', res = 300
+# )
+# wnt_plot
+# dev.off()
+```
+
+
+## HIF signalling pathwya
+
+```{r}
+# p1 <- plot_gene_contribution(
+#     HIF_genePert %>%
+#         .[rownames(.) %in% HIF_gene, colnames(.) %in% lobular_E2_sample],
+#     filterBy = "mean",
+#     annotation_df = anno_df_HIF,
+#     mapEntrezID = entrez2name,
+#     topGene = 10,
+#     annotation_colors = list(
+#         `Z Range` = setNames(
+#             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HIF$`Z Range`))),
+#             levels(anno_df_HIF$`Z Range`)
+#         )),
+#     clustering_method = "average",
+#     color = rev(divergex_hcl(100, palette = "RdBu")),
+#     breaks = seq(-0.00003, 0.00003, length.out = 100)
+#     ) %>%
+#     as.ggplot()
+# p2 <- hif_box
+# ```
+# 
+# ```{r}
+# hif_sig <- (( p1 | p2) +
+#                   plot_layout(widths = c(0.3, 0.2))) +
+#     plot_annotation(tag_levels = "A")  &
+#     theme(
+#         plot.tag = element_text(size = 22, face = "bold" ),
+#         text = element_text(size = 14)
+#     )
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/hif_sig.png",
+#     width = 270, height =120, units='mm', res = 300
+# )
+# hif_sig
+# dev.off()
+```
+
+## sikora signature
+
+```{r}
+# # Table of goseq results in Sikora et al genes
+# goseq %>% 
+#     dplyr::filter(FDR_over < 0.05)  %>%
+#     mutate(
+#         gs_name = str_remove_all(gs_name, "kegg.")
+#     ) %>%
+#     dplyr::select(
+#         `Gene-set name` = gs_name, FDR = FDR_over
+#     ) %>%
+#     xtable::xtable(
+#         caption = "KEGG pathways that were significantly over-represented in ILC-specific estrogen-regulated genes curated by Sikora et al.\\cite{sikora_invasive_2014}. The over-representation testing was performed using a standard hypergeometric approach with an FDR cut-off of 0.05.", 
+#         label = "goseq_sikora", 
+#         digits = 0
+#     )  %>%
+#     xtable::print.xtable(
+#         "~/PhD_thesis/draft_figure/chapter_04/goseq_sikora.tex", type = "latex",
+#         caption.placement = "top",
+#         include.rownames = FALSE,
+#         sanitize.text.function = function(x) x)
+```
+
+
+```{r}
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/sikora_gene.png",
+#     width = 270, height =100, units='mm', res = 300
+# )
+# plot_grid(
+#     p1, get_legend(useless_p),
+#     rel_widths = c(9,2)
+# )
+# dev.off()
+```
+
+## FOXA1 targets 
+
+```{r}
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/foxa_target.png",
+#     width = 300, height =210, units='mm', res = 300
+# )
+# g
+# dev.off()
+```
+

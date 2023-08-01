@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+<meta name="date" content="2022-05-02" />
+
+<title>sSNAPPY</title>
+
+<script src="site_libs/header-attrs-2.23/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<script src="site_libs/htmlwidgets-1.6.2/htmlwidgets.js"></script>
+<link href="site_libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+<script src="site_libs/datatables-binding-0.28/datatables.js"></script>
+<link href="site_libs/dt-core-1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="site_libs/dt-core-1.13.4/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="site_libs/dt-core-1.13.4/js/jquery.dataTables.min.js"></script>
+<link href="site_libs/nouislider-7.0.10/jquery.nouislider.min.css" rel="stylesheet" />
+<script src="site_libs/nouislider-7.0.10/jquery.nouislider.min.js"></script>
+<link href="site_libs/selectize-0.12.0/selectize.bootstrap3.css" rel="stylesheet" />
+<script src="site_libs/selectize-0.12.0/selectize.min.js"></script>
+<link href="site_libs/crosstalk-1.2.0/css/crosstalk.min.css" rel="stylesheet" />
+<script src="site_libs/crosstalk-1.2.0/js/crosstalk.min.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">20131906_HickeyT_JC_NormalBreast</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="description.html">Description</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    QC
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="qc_raw.html">Raw Data</a>
+    </li>
+    <li>
+      <a href="qc_trimmed.html">Trimmed Data</a>
+    </li>
+    <li>
+      <a href="qc_aligned.html">Aligned Data</a>
+    </li>
+  </ul>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Analysis
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="dge_analysis.html">Differential Gene Expression</a>
+    </li>
+    <li>
+      <a href="IDC_ILC.html">IDC/ILC classification</a>
+    </li>
+    <li>
+      <a href="CellDecon_WEHI.html">Cell Type Deconvolution</a>
+    </li>
+    <li>
+      <a href="sSNAPPY.html">sSNAPPY</a>
+    </li>
+    <li>
+      <a href="E2_signal.html">E2 response</a>
+    </li>
+    <li>
+      <a href="DHT_signal.html">DHT response</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">sSNAPPY</h1>
+<h4 class="date">2022-05-02</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> </a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2023-08-01
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 5
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 1
+</p>
+<p>
+<strong>Knit directory:</strong> <code>WenjunLiu_Thesis_Chapter4/</code>
+<span class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.0). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20200930code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20200930)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20200930code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20200930)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongnoversioncontrol">
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> <strong>Repository version:</strong> no
+version control </a>
+</p>
+</div>
+<div id="strongRepositoryversionstrongnoversioncontrol"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Tracking code development and connecting the code version to the
+results is critical for reproducibility. To start using Git, open the
+Terminal and type <code>git init</code> in your project directory.</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+<p>
+This project is not being versioned with Git. To obtain the full
+reproducibility benefits of using workflowr, please see
+<code>?wflow_start</code>.
+</p>
+<hr>
+</div>
+</div>
+</div>
+<pre class="r"><code>library(tidyverse)
+library(yaml)
+library(scales)
+library(pander)
+library(AnnotationHub)
+library(ggraph)
+library(igraph)
+library(ensembldb)
+library(cowplot)
+library(magrittr)
+library(sSNAPPY)
+library(cqn)
+library(DT)
+library(multcomp)
+library(rvest)
+library(ggfortify)
+library(xml2)
+library(org.Hs.eg.db)
+library(lme4)
+library(colorspace)
+library(lmerTest)
+library(reactable)
+library(corrplot)
+library(scatterpie)
+library(htmltools)
+library(RColorBrewer)
+library(msigdbr)
+library(UpSetR)
+library(glue)
+library(ggfortify)
+library(pheatmap)
+library(parallel)
+library(ggplotify)
+library(edgeR)
+library(plotly)
+library(ggforce)
+library(ggnewscale)
+library(concaveman)
+library(fgsea)</code></pre>
+<pre class="r"><code>panderOptions(&quot;table.split.table&quot;, Inf)
+panderOptions(&quot;big.mark&quot;, &quot;,&quot;)
+theme_set(theme_bw())</code></pre>
+<pre class="r"><code>config &lt;- here::here(&quot;config/config.yml&quot;) %&gt;%
+  read_yaml()
+suffix &lt;- paste0(config$tag)
+sp &lt;- config$ref$species %&gt;%
+  str_replace(&quot;(^[a-z])[a-z]*_([a-z]+)&quot;, &quot;\\1\\2&quot;) %&gt;%
+  str_to_title()</code></pre>
+<pre class="r"><code>formatP &lt;- function(p, m = 0.0001){
+out &lt;- rep(&quot;&quot;, length(p))
+out[p &lt; m] &lt;- sprintf(&quot;%.2e&quot;, p[p&lt;m])
+out[p &gt;= m] &lt;- sprintf(&quot;%.4f&quot;, p[p&gt;=m])
+out
+}</code></pre>
+<div id="setup" class="section level1">
+<h1>Setup</h1>
+<div id="gene-annotations" class="section level2">
+<h2>Gene Annotations</h2>
+<pre class="r"><code>ah &lt;- AnnotationHub() %&gt;%
+  subset(rdataclass == &quot;EnsDb&quot;) %&gt;%
+  subset(str_detect(description, as.character(config$ref$release))) %&gt;%
+  subset(genome == config$ref$build)
+stopifnot(length(ah) == 1)</code></pre>
+<pre class="r"><code>ensDb &lt;- ah[[1]]
+genesGR &lt;- read_rds(here::here(&quot;output/genesGR.rds&quot;))</code></pre>
+</div>
+<div id="sample-metadata-and-merged-counts" class="section level2">
+<h2>Sample metadata and merged counts</h2>
+<p>Sample metadata and merged counts were read in and filtered as in the
+dge_analysis.Rmd. DGElists were formed for normal and tumor samples and
+<code>cqn</code> was applied for biases introduced by systematic
+artefacts.</p>
+<pre class="r"><code>init_cellType &lt;- read_delim(here::here(&quot;config/sample_meta.txt&quot;), delim = &quot;\t&quot;)
+init_cellType &lt;- init_cellType %&gt;%
+    mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex(&quot;Stroma&quot;, ignore_case = T)), TRUE, FALSE), 
+           Epithelial = ifelse(str_detect(Dominant_cell_type, regex(&quot;Epithelial&quot;, ignore_case = T)), TRUE, FALSE), 
+           Ducts = ifelse(str_detect(Dominant_cell_type, regex(&quot;ducts&quot;, ignore_case = T)), TRUE, FALSE), 
+           Fat = ifelse(str_detect(Dominant_cell_type, regex(&quot;fat&quot;, ignore_case = T)), TRUE, FALSE), 
+           patient = str_replace(patient, &quot;TH&quot;, &quot;TH-&quot;)) %&gt;%
+    pivot_longer(c(&quot;Stroma&quot;, &quot;Epithelial&quot;, &quot;Ducts&quot;, &quot;Fat&quot;),
+                 names_to = &quot;cell_type&quot;, 
+                 values_to = &quot;TF&quot;) %&gt;%
+    mutate(cell_type = ifelse(TF, cell_type, NA)) %&gt;%
+    dplyr::select(-c(&quot;TF&quot;, &quot;Dominant_cell_type&quot;)) %&gt;%
+    .[!is.na(.$cell_type),] %&gt;%
+    chop(&quot;cell_type&quot;) %&gt;%
+    mutate(cell_type = vapply(.$cell_type, function(x){
+        paste(x,collapse = &quot;;&quot;)
+    }, character(1)))</code></pre>
+<pre class="r"><code>samples &lt;- config$samples %&gt;%
+  here::here() %&gt;%
+  read_tsv() %&gt;%
+    left_join(init_cellType) %&gt;%
+  mutate(
+    Filename = paste0(sample, &quot;.r_1&quot;), 
+    condition = ifelse(Tumor, 
+                       paste(&quot;Tumor&quot;, treat, sep = &quot;_&quot;), 
+                       paste(&quot;Normal&quot;, treat, sep = &quot;_&quot;)), 
+    patient = vapply(.$patient, function(x){str_split(x, &quot;-&quot;)[[1]][2]}, character(1)), 
+    patient = ifelse(Tumor, 
+                       paste(&quot;Tumor&quot;, patient, sep = &quot;-&quot;), 
+                       paste(&quot;Normal&quot;,patient, sep = &quot;-&quot;)), 
+    desc = paste(patient, treat, sep = &quot; &quot;)
+  ) %&gt;%
+  dplyr::select(-c(&quot;name&quot;, &quot;sample&quot;)) %&gt;%
+  dplyr::rename(name = desc) %&gt;%
+  mutate_if(
+    function(x){length(unique(x)) &lt; length(x)},
+    as.factor
+  ) %&gt;%
+  mutate(
+    treat = relevel(treat, ref = &quot;Veh&quot;)
+  )</code></pre>
+<pre class="r"><code>mergedSamples &lt;- samples %&gt;%
+  group_by(name, patient, treat, Tumor, cell_type, Tissue_type, Age, Diagnosis) %&gt;%
+  tally()
+tumor_sample &lt;- mergedSamples %&gt;%
+  dplyr::filter(Tumor == TRUE) %&gt;%
+    droplevels()</code></pre>
+<p>Tumour samples were classified into a IDC-like and a ILC-like group
+bassing on the analysis in <a href="IDC_ILC.html">ILC/IDC
+classification</a>:</p>
+<pre class="r"><code>tumor_sample &lt;- tumor_sample %&gt;%
+    dplyr::mutate(
+        Diagnosis = ifelse(
+            str_detect(Diagnosis, &quot;invasive&quot;), 
+            &quot;ILC-like&quot;, &quot;IDC-like&quot;
+        ),
+        Diagnosis = ifelse(
+            patient == &quot;Tumor-8&quot;, 
+            &quot;IDC-like&quot;, 
+            Diagnosis
+        ), 
+        Diagnosis = as.factor(Diagnosis)
+    )</code></pre>
+<pre class="r"><code>tumor_sample %&gt;%
+    ungroup() %&gt;%
+    dplyr::select(patient, Diagnosis) %&gt;%
+    unique() %&gt;%
+    pander()</code></pre>
+<table style="width:31%;">
+<colgroup>
+<col width="13%" />
+<col width="16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">patient</th>
+<th align="center">Diagnosis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">Tumor-1</td>
+<td align="center">ILC-like</td>
+</tr>
+<tr class="even">
+<td align="center">Tumor-2</td>
+<td align="center">IDC-like</td>
+</tr>
+<tr class="odd">
+<td align="center">Tumor-3</td>
+<td align="center">IDC-like</td>
+</tr>
+<tr class="even">
+<td align="center">Tumor-4</td>
+<td align="center">ILC-like</td>
+</tr>
+<tr class="odd">
+<td align="center">Tumor-5</td>
+<td align="center">IDC-like</td>
+</tr>
+<tr class="even">
+<td align="center">Tumor-6</td>
+<td align="center">ILC-like</td>
+</tr>
+<tr class="odd">
+<td align="center">Tumor-7</td>
+<td align="center">ILC-like</td>
+</tr>
+<tr class="even">
+<td align="center">Tumor-8</td>
+<td align="center">IDC-like</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>treat_cols &lt;- c(
+  Veh = rgb(0.7, 0.7, 0.7),
+  DHT = rgb(0.8, 0.2, 0.2),
+  E2 = rgb(0.2, 0.2, 0.8),
+  `E2+DHT` = rgb(1, 0.4, 1)
+)
+tumor_cols &lt;- hcl.colors(
+  n = length(unique(samples$Tumor)), 
+  palette = &quot;Zissou 1&quot;
+  ) %&gt;%
+  setNames(unique(samples$Tumor))
+patient_cols &lt;- hcl.colors(
+  n = length(levels(mergedSamples$patient)), 
+  palette = &quot;Spectral&quot;
+  ) %&gt;%
+  setNames(levels(mergedSamples$patient))
+diag_cols &lt;- readRDS(&quot;~/GSE800098/output/diag_cols.rds&quot;)</code></pre>
+<pre class="r"><code>treat_shapes &lt;- c(
+  Veh = 1,
+  DHT = 19,
+  E2 = 15,
+  `E2+DHT` = 17
+)</code></pre>
+<pre class="r"><code># counts &lt;- here::here(&quot;data/aligned/counts/counts.out.gz&quot;) %&gt;%
+#   gzfile() %&gt;%
+#   read_tsv(comment = &quot;#&quot;) %&gt;%
+#   dplyr::select(Geneid, ends_with(&quot;bam&quot;)) %&gt;%
+#   rename_at(vars(ends_with(&quot;bam&quot;)), dirname) %&gt;%
+#   rename_all(basename) %&gt;%
+#   column_to_rownames(&quot;Geneid&quot;)</code></pre>
+<pre class="r"><code># mergedCounts &lt;- counts %&gt;%
+#   rownames_to_column(&quot;gene_id&quot;) %&gt;%
+#   pivot_longer(
+#     cols = -gene_id,
+#     names_to = &quot;Filename&quot;,
+#     values_to = &quot;counts&quot;
+#   ) %&gt;%
+#   left_join(samples, by = &quot;Filename&quot;) %&gt;%
+#   group_by(
+#     gene_id, name, patient, treat, Tumor) %&gt;%
+#   summarise(counts = sum(counts), .groups = &quot;drop&quot;) %&gt;%
+#   pivot_wider(
+#     id_cols = gene_id,
+#     values_from = counts,
+#     names_from = name
+#   ) %&gt;%
+#   column_to_rownames(&quot;gene_id&quot;)
+# saveRDS(mergedCounts, here::here(&quot;data/mergedCounts.rds&quot;))
+mergedCounts &lt;- readRDS(here::here(&quot;data/mergedCounts.rds&quot;))</code></pre>
+<pre><code>           used  (Mb) gc trigger   (Mb) limit (Mb) max used  (Mb)
+Ncells 11106656 593.2   19553455 1044.3         NA 15326221 818.6
+Vcells 26759901 204.2   37389395  285.3     204800 31091163 237.3</code></pre>
+<p>The filtered and normalised <code>DGEList</code> was loaded in.</p>
+<pre class="r"><code>dge_tumor &lt;- readRDS(here::here(&quot;output/dge_tumor.rds&quot;))</code></pre>
+<pre class="r"><code>cqNorma_tumor &lt;- with(
+  dge_tumor,
+  cqn(
+    counts= counts,
+    x = genes$gc_content,
+    lengths = genes$ave_tx_len
+  )
+)
+dge_tumor$offset &lt;- cqNorma_tumor$glm.offset
+logCPM_tumor &lt;- cqNorma_tumor$y + cqNorma_tumor$offset</code></pre>
+<pre class="r"><code>pcaPost_tumor &lt;- logCPM_tumor %&gt;%
+  t() %&gt;%
+  prcomp() </code></pre>
+</div>
+<div id="convert-gene-id" class="section level2">
+<h2>Convert gene id</h2>
+<p>To apply the <em>sSNAPPY</em> workflow, the rownames of the logCPM
+matrix must be converted from gene IDs to entrez ID.</p>
+<pre class="r"><code>rownames(logCPM_tumor) &lt;- mapIds(ensDb,rownames(logCPM_tumor), &quot;ENTREZID&quot;, keytype = &quot;GENEID&quot;)
+logCPM_tumor &lt;- logCPM_tumor[!is.na(rownames(logCPM_tumor)),]</code></pre>
+</div>
+</div>
+<div id="kegg-pathway-filtering" class="section level1">
+<h1>KEGG Pathway filtering</h1>
+<p>Pathway topologies of KEGG pathways were retrieved.</p>
+<pre class="r"><code>gsTopology &lt;- retrieve_topology(database = &quot;kegg&quot;, species = &quot;hsapiens&quot;)</code></pre>
+<p>315 pathways were retrieved. To make the results more intepretable
+and more relevant to this project, irrelevant KEGG pathways were
+filtered out.</p>
+<p>KEGG pathway categorizations were retrieved from KEGG <a
+href="https://www.genome.jp/kegg/pathway.html">official website</a>:</p>
+<pre class="r"><code># keggCategory &lt;- read_html(&quot;https://www.genome.jp/kegg/pathway.html&quot;)
+# # keggCategory %&gt;%
+# #   html_node(&quot;body&quot;) %&gt;%
+# #   xml_find_all(&quot;//b[@id]&quot;) %&gt;%
+# #   html_text()
+# subCategory &lt;- keggCategory %&gt;%
+#   html_node(&quot;body&quot;) %&gt;%
+#   xml_find_all(&quot;//b&quot;) %&gt;%
+#   html_text() 
+# 
+# KEGGwithN &lt;- keggCategory %&gt;%
+#   html_node(&quot;body&quot;) %&gt;%
+#   xml_find_all(&quot;//div[contains(@class, &#39;list&#39;)]&quot;) %&gt;%
+#   .[-c(1:4)] %&gt;%
+#   html_text()
+# keggCategory &lt;- KEGGwithN %&gt;%
+#   setNames(subCategory[-c(1:9)]) %&gt;%
+#   enframe(name = &quot;subcategory&quot;, 
+#           value = &quot;pathways&quot;) %&gt;%
+#   mutate(pathways = strsplit(pathways, &quot;\n &quot;)) %&gt;%
+#   unnest(pathways) %&gt;%
+#   dplyr::filter(pathways != &quot;&quot;, 
+#                 pathways != &quot; &quot;) %&gt;%
+#   mutate(
+#     pathways = vapply(.$pathways, function(x){
+#     str_remove(x, &quot;[0-9]{5} M R|[0-9]{5} M N&quot;)
+#   }, character(1))) %&gt;%
+#   mutate(
+#     pathways = vapply(.$pathways, function(x){
+#     str_remove(x, &quot;[0-9]{5} M&quot;)
+#   }, character(1)))  %&gt;%
+#   mutate(
+#     pathways = vapply(.$pathways, function(x){
+#     str_remove(x, &quot;[0-9]{5} N&quot;)
+#   }, character(1)))  %&gt;%
+#   mutate(
+#     pathways = vapply(.$pathways, function(x){
+#     str_remove(x, &quot;[0-9]{5}&quot;)
+#   }, character(1))) %&gt;%
+#   mutate(main = vapply(.$subcategory, function(x){
+#     str_sub(x, start = 1, end = 2)
+#   }, character(1))) %&gt;%
+#   left_join(subCategory[c(2:8)] %&gt;%
+#   enframe(name = NULL, 
+#           value = &quot;Category&quot;) %&gt;%
+#   mutate(
+#     main = vapply(.$Category, function(x){
+#       str_sub(x, start = 1, end = 2)
+#     }, character(1)), 
+#     Category =  vapply(.$Category, function(x){
+#       str_sub(x, start = 3, end = -1)
+#     }, character(1))
+#   )) %&gt;%
+#   mutate(
+#     subNumber = vapply(.$subcategory, function(x){
+#       str_split(x, &quot; &quot;)[[1]][1]
+#     }, character(1)), 
+#     subcategory =  vapply(.$subcategory, function(x){
+#      str_remove(x
+#                 , &quot;^.\\.[0-9]{1,} &quot;)
+#     }, character(1))
+#   ) %&gt;%
+#   dplyr::select(Category, subNumber, subcategory, pathways) %&gt;%
+#   mutate(pathways = vapply(.$pathways, function(x){
+#       str_trim(x, side = &quot;left&quot;)
+#     }, character(1)))
+#saveRDS(keggCategory, file = here::here(&quot;output/keggCategory.rds&quot;))
+keggCategory &lt;- readRDS(here::here(&quot;output/keggCategory.rds&quot;))
+keggCategory %&gt;%
+  mutate_all(as.factor) %&gt;%
+  datatable(filter = &quot;top&quot;)</code></pre>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-ccc9598190961a23d338" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-ccc9598190961a23d338">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td><\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot; Cellular Processes&quot;,&quot; Drug Development&quot;,&quot; Environmental Information Processing&quot;,&quot; Genetic Information Processing&quot;,&quot; Human Diseases&quot;,&quot; Metabolism&quot;,&quot; Organismal Systems&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;1.1&quot;,&quot;1.10&quot;,&quot;1.11&quot;,&quot;1.12&quot;,&quot;1.2&quot;,&quot;1.3&quot;,&quot;1.4&quot;,&quot;1.5&quot;,&quot;1.6&quot;,&quot;1.7&quot;,&quot;1.8&quot;,&quot;1.9&quot;,&quot;2.1&quot;,&quot;2.2&quot;,&quot;2.3&quot;,&quot;2.4&quot;,&quot;2.5&quot;,&quot;3.1&quot;,&quot;3.2&quot;,&quot;3.3&quot;,&quot;4.1&quot;,&quot;4.2&quot;,&quot;4.3&quot;,&quot;4.4&quot;,&quot;4.5&quot;,&quot;5.1&quot;,&quot;5.10&quot;,&quot;5.2&quot;,&quot;5.3&quot;,&quot;5.4&quot;,&quot;5.5&quot;,&quot;5.6&quot;,&quot;5.7&quot;,&quot;5.8&quot;,&quot;5.9&quot;,&quot;6.1&quot;,&quot;6.10&quot;,&quot;6.11&quot;,&quot;6.12&quot;,&quot;6.2&quot;,&quot;6.3&quot;,&quot;6.4&quot;,&quot;6.5&quot;,&quot;6.6&quot;,&quot;6.7&quot;,&quot;6.8&quot;,&quot;6.9&quot;,&quot;7.1&quot;,&quot;7.10&quot;,&quot;7.11&quot;,&quot;7.2&quot;,&quot;7.3&quot;,&quot;7.4&quot;,&quot;7.5&quot;,&quot;7.6&quot;,&quot;7.7&quot;,&quot;7.8&quot;,&quot;7.9&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;Aging&quot;,&quot;Amino acid metabolism&quot;,&quot;Biosynthesis of other secondary metabolites&quot;,&quot;Cancer: overview&quot;,&quot;Cancer: specific types&quot;,&quot;Carbohydrate metabolism&quot;,&quot;Cardiovascular disease&quot;,&quot;Cell growth and death&quot;,&quot;Cell motility&quot;,&quot;Cellular community - eukaryotes&quot;,&quot;Cellular community - prokaryotes&quot;,&quot;Chemical structure transformation maps&quot;,&quot;Chronology: Antiinfectives&quot;,&quot;Chronology: Antineoplastics&quot;,&quot;Chronology: Nervous system agents&quot;,&quot;Chronology: Other drugs&quot;,&quot;Circulatory system&quot;,&quot;Development and regeneration&quot;,&quot;Digestive system&quot;,&quot;Drug resistance: antimicrobial&quot;,&quot;Drug resistance: antineoplastic&quot;,&quot;Endocrine and metabolic disease&quot;,&quot;Endocrine system&quot;,&quot;Energy metabolism&quot;,&quot;Environmental adaptation&quot;,&quot;Excretory system&quot;,&quot;Folding, sorting and degradation&quot;,&quot;Glycan biosynthesis and metabolism&quot;,&quot;Immune disease&quot;,&quot;Immune system&quot;,&quot;Infectious disease: bacterial&quot;,&quot;Infectious disease: parasitic&quot;,&quot;Infectious disease: viral&quot;,&quot;Information processing in viruses&quot;,&quot;Lipid metabolism&quot;,&quot;Membrane transport&quot;,&quot;Metabolism of cofactors and vitamins&quot;,&quot;Metabolism of other amino acids&quot;,&quot;Metabolism of terpenoids and polyketides&quot;,&quot;Nervous system&quot;,&quot;Neurodegenerative disease&quot;,&quot;Nucleotide metabolism&quot;,&quot;Replication and repair&quot;,&quot;Sensory system&quot;,&quot;Signal transduction&quot;,&quot;Signaling molecules and interaction&quot;,&quot;Skeleton-based classification&quot;,&quot;Structure-based classification&quot;,&quot;Substance dependence&quot;,&quot;Target-based classification: Enzymes&quot;,&quot;Target-based classification: G protein-coupled receptors&quot;,&quot;Target-based classification: Ion channels&quot;,&quot;Target-based classification: Nuclear receptors&quot;,&quot;Target-based classification: Transporters&quot;,&quot;Transcription&quot;,&quot;Translation&quot;,&quot;Transport and catabolism&quot;,&quot;Xenobiotics biodegradation and metabolism&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;1,2-Diphenyl substitution family&quot;,&quot;ABC transporters&quot;,&quot;Acarbose and validamycin biosynthesis&quot;,&quot;Acute myeloid leukemia&quot;,&quot;Adherens junction&quot;,&quot;Adipocytokine signaling pathway&quot;,&quot;Adrenergic signaling in cardiomyocytes&quot;,&quot;Aflatoxin biosynthesis&quot;,&quot;African trypanosomiasis&quot;,&quot;AGE-RAGE signaling pathway in diabetic complications&quot;,&quot;Agents for Alzheimer-type dementia&quot;,&quot;Alanine, aspartate and glutamate metabolism&quot;,&quot;Alcoholic liver disease&quot;,&quot;Alcoholism&quot;,&quot;Aldosterone synthesis and secretion&quot;,&quot;Aldosterone-regulated sodium reabsorption&quot;,&quot;Allograft rejection&quot;,&quot;alpha-Adrenergic receptor agonists/antagonists&quot;,&quot;alpha-Linolenic acid metabolism&quot;,&quot;Alzheimer disease&quot;,&quot;Amino sugar and nucleotide sugar metabolism&quot;,&quot;Aminoacyl-tRNA biosynthesis&quot;,&quot;Aminobenzoate degradation&quot;,&quot;Aminoglycosides&quot;,&quot;Amoebiasis&quot;,&quot;Amphetamine addiction&quot;,&quot;AMPK signaling pathway&quot;,&quot;Amyotrophic lateral sclerosis&quot;,&quot;Angiotensin receptor and endothelin receptor antagonists&quot;,&quot;Anthocyanin biosynthesis&quot;,&quot;Anti-HIV agents&quot;,&quot;Antiarrhythmic drugs&quot;,&quot;Anticonvulsants&quot;,&quot;Antidepressants&quot;,&quot;Antidiabetics&quot;,&quot;Antidyslipidemic agents&quot;,&quot;Antifolate resistance&quot;,&quot;Antifungal agents&quot;,&quot;Antigen processing and presentation&quot;,&quot;Antiglaucoma agents&quot;,&quot;Antimigraines&quot;,&quot;Antineoplastics - agents from natural products&quot;,&quot;Antineoplastics - alkylating agents&quot;,&quot;Antineoplastics - antimetabolic agents&quot;,&quot;Antineoplastics - hormones&quot;,&quot;Antineoplastics - protein kinase inhibitors&quot;,&quot;Antiparkinsonian agents&quot;,&quot;Antipsychotics&quot;,&quot;Antipsychotics - butyrophenones&quot;,&quot;Antipsychotics - phenothiazines&quot;,&quot;Antirheumatics - DMARDs and biological agents&quot;,&quot;Antithrombosis agents&quot;,&quot;Antiulcer drugs&quot;,&quot;Antiviral agents&quot;,&quot;Anxiolytics&quot;,&quot;Apelin signaling pathway&quot;,&quot;Apoptosis&quot;,&quot;Apoptosis - fly&quot;,&quot;Apoptosis - multiple species&quot;,&quot;Arabinogalactan biosynthesis - Mycobacterium&quot;,&quot;Arachidonic acid metabolism&quot;,&quot;Arginine and proline metabolism&quot;,&quot;Arginine biosynthesis&quot;,&quot;Arrhythmogenic right ventricular cardiomyopathy&quot;,&quot;Ascorbate and aldarate metabolism&quot;,&quot;Asthma&quot;,&quot;Atrazine degradation&quot;,&quot;Autoimmune thyroid disease&quot;,&quot;Autophagy - animal&quot;,&quot;Autophagy - other&quot;,&quot;Autophagy - yeast&quot;,&quot;Axon guidance&quot;,&quot;Axon regeneration&quot;,&quot;B cell receptor signaling pathway&quot;,&quot;Bacterial chemotaxis&quot;,&quot;Bacterial invasion of epithelial cells&quot;,&quot;Bacterial secretion system&quot;,&quot;Basal cell carcinoma&quot;,&quot;Basal transcription factors&quot;,&quot;Base excision repair&quot;,&quot;Benzoate degradation&quot;,&quot;Benzodiazepine family&quot;,&quot;Benzoic acid family&quot;,&quot;Benzoxazinoid biosynthesis&quot;,&quot;beta-Adrenergic receptor agonists/antagonists&quot;,&quot;beta-Alanine metabolism&quot;,&quot;beta-Lactam resistance&quot;,&quot;Betalain biosynthesis&quot;,&quot;Bile secretion&quot;,&quot;Biofilm formation - Escherichia coli&quot;,&quot;Biofilm formation - Pseudomonas aeruginosa&quot;,&quot;Biofilm formation - Vibrio cholerae&quot;,&quot;Biosynthesis of 12-, 14- and 16-membered macrolidesIncluding: Tylosin biosynthesis, Mycinamicin biosynthesis, Erythromycin biosynthesis, Oleandomycin biosynthesis, Pikromycin/methymycin biosynthesis, Avermectin biosynthesis&quot;,&quot;Biosynthesis of alkaloids derived from histidine and purine&quot;,&quot;Biosynthesis of alkaloids derived from ornithine, lysine and nicotinic acid&quot;,&quot;Biosynthesis of alkaloids derived from shikimate pathway&quot;,&quot;Biosynthesis of alkaloids derived from terpenoid and polyketide&quot;,&quot;Biosynthesis of ansamycins&quot;,&quot;Biosynthesis of enediyne antibiotics&quot;,&quot;Biosynthesis of phenylpropanoids&quot;,&quot;Biosynthesis of plant hormones&quot;,&quot;Biosynthesis of plant secondary metabolites&quot;,&quot;Biosynthesis of siderophore group nonribosomal peptides&quot;,&quot;Biosynthesis of terpenoids and steroids&quot;,&quot;Biosynthesis of type II polyketide backbone&quot;,&quot;Biosynthesis of type II polyketide products&quot;,&quot;Biosynthesis of unsaturated fatty acids&quot;,&quot;Biosynthesis of vancomycin group antibiotics&quot;,&quot;Biosynthesis of various alkaloidsIncluding: Cucurbitacin biosynthesis, Solanine and tomatine biosynthesis, Ephedrine biosynthesis, Capsaicin biosynthesis, Acridone alkaloid biosynthesis&quot;,&quot;Biosynthesis of various antibioticsIncluding: Kanosamine biosynthesis, Aurachin biosynthesis, Bacilysin biosynthesis, Puromycin biosynthesis, Dapdiamides biosynthesis, Fosfomycin biosynthesis, Cremeomycin biosynthesis, Pentalenolactone biosynthesis, Terpentecin biosynthesis, Roseoflavin biosynthesis, Cycloserine biosynthesis&quot;,&quot;Biosynthesis of various other secondary metabolitesIncluding: Ditryptophenaline biosynthesis, Fumiquinazoline D biosynthesis, Paerucumarin biosynthesis, Staphyloferrin B biosynthesis, Cyclooctatin biosynthesis, Lovastatin biosynthesis, Grixazone biosynthesis, Staphyloferrin A biosynthesis, Ethynylserine biosynthesis, Aerobactin biosynthesis&quot;,&quot;Biosynthesis of various plant secondary metabolitesIncluding: Crocin biosynthesis, Cannabidiol biosynthesis, Mugineic acid biosynthesis, Pentagalloylglucose biosynthesis, Benzoxazinoid biosynthesis, Gramine biosynthesis, Coumarin biosynthesis, Furanocoumarin biosynthesis, Hordatine biosynthesis, Podophyllotoxin biosynthesis&quot;,&quot;Biotin metabolism&quot;,&quot;Bisphenol degradation&quot;,&quot;Bladder cancer&quot;,&quot;Brassinosteroid biosynthesis&quot;,&quot;Breast cancer&quot;,&quot;Butanoate metabolism&quot;,&quot;C-type lectin receptor signaling pathway&quot;,&quot;C5-Branched dibasic acid metabolism&quot;,&quot;Caffeine metabolism&quot;,&quot;Calcium channel blocking drugs&quot;,&quot;Calcium signaling pathway&quot;,&quot;cAMP signaling pathway&quot;,&quot;Caprolactam degradation&quot;,&quot;Carbapenem biosynthesis&quot;,&quot;Carbohydrate digestion and absorption&quot;,&quot;Carbon fixation in photosynthetic organisms&quot;,&quot;Carbon fixation pathways in prokaryotes&quot;,&quot;Cardiac muscle contraction&quot;,&quot;Carotenoid biosynthesis&quot;,&quot;Catecholamine transferase inhibitors&quot;,&quot;Cationic antimicrobial peptide (CAMP) resistance&quot;,&quot;Cell adhesion molecules&quot;,&quot;Cell cycle&quot;,&quot;Cell cycle - Caulobacter&quot;,&quot;Cell cycle - yeast&quot;,&quot;Cellular senescence&quot;,&quot;Central carbon metabolism in cancer&quot;,&quot;Cephalosporins - oral agents&quot;,&quot;Cephalosporins - parenteral agents&quot;,&quot;cGMP-PKG signaling pathway&quot;,&quot;Chagas disease&quot;,&quot;Chemical carcinogenesis - DNA adducts&quot;,&quot;Chemical carcinogenesis - reactive oxygen species&quot;,&quot;Chemical carcinogenesis - receptor activation&quot;,&quot;Chemokine signaling pathway&quot;,&quot;Chloroalkane and chloroalkene degradation&quot;,&quot;Chlorocyclohexane and chlorobenzene degradation&quot;,&quot;Cholesterol metabolism&quot;,&quot;Choline metabolism in cancer&quot;,&quot;Cholinergic and anticholinergic drugs&quot;,&quot;Cholinergic synapse&quot;,&quot;Chronic myeloid leukemia&quot;,&quot;Circadian entrainment&quot;,&quot;Circadian rhythm&quot;,&quot;Circadian rhythm - fly&quot;,&quot;Circadian rhythm - plant&quot;,&quot;Citrate cycle (TCA cycle)&quot;,&quot;Clavulanic acid biosynthesis&quot;,&quot;Cocaine addiction&quot;,&quot;Collecting duct acid secretion&quot;,&quot;Colorectal cancer&quot;,&quot;Complement and coagulation cascades&quot;,&quot;Coronavirus disease - COVID-19&quot;,&quot;Cortisol synthesis and secretion&quot;,&quot;Cushing syndrome&quot;,&quot;Cutin, suberine and wax biosynthesis&quot;,&quot;Cyanoamino acid metabolism&quot;,&quot;Cyclooxygenase inhibitors&quot;,&quot;Cysteine and methionine metabolism&quot;,&quot;Cytokine-cytokine receptor interaction&quot;,&quot;Cytosolic DNA-sensing pathway&quot;,&quot;D-Amino acid metabolism&quot;,&quot;Degradation of flavonoids New!&quot;,&quot;Diabetic cardiomyopathy&quot;,&quot;Dilated cardiomyopathy&quot;,&quot;Dioxin degradation&quot;,&quot;Diterpenoid biosynthesisIncluding: Gibberellin biosynthesis&quot;,&quot;DNA replication&quot;,&quot;Dopamine receptor agonists/antagonists&quot;,&quot;Dopaminergic synapse&quot;,&quot;Dorso-ventral axis formation&quot;,&quot;Drug metabolism - cytochrome P450&quot;,&quot;Drug metabolism - other enzymes&quot;,&quot;ECM-receptor interaction&quot;,&quot;EGFR tyrosine kinase inhibitor resistance&quot;,&quot;Eicosanoid receptor agonists/antagonists&quot;,&quot;Eicosanoids&quot;,&quot;Endocrine and other factor-regulated calcium reabsorption&quot;,&quot;Endocrine resistance&quot;,&quot;Endocytosis&quot;,&quot;Endometrial cancer&quot;,&quot;Epithelial cell signaling in Helicobacter pylori infection&quot;,&quot;Epstein-Barr virus infection&quot;,&quot;ErbB signaling pathway&quot;,&quot;Estrogen signaling pathway&quot;,&quot;Ether lipid metabolism&quot;,&quot;Ethylbenzene degradation&quot;,&quot;Exopolysaccharide biosynthesis&quot;,&quot;Fanconi anemia pathway&quot;,&quot;Fat digestion and absorption&quot;,&quot;Fatty acid biosynthesis&quot;,&quot;Fatty acid degradation&quot;,&quot;Fatty acid elongation&quot;,&quot;Fc epsilon RI signaling pathway&quot;,&quot;Fc gamma R-mediated phagocytosis&quot;,&quot;Ferroptosis&quot;,&quot;Flagellar assembly&quot;,&quot;Flavone and flavonol biosynthesis&quot;,&quot;Flavonoid biosynthesis&quot;,&quot;Fluid shear stress and atherosclerosis&quot;,&quot;Fluorobenzoate degradation&quot;,&quot;Focal adhesion&quot;,&quot;Folate biosynthesis&quot;,&quot;FoxO signaling pathway&quot;,&quot;Fructose and mannose metabolism&quot;,&quot;Furfural degradation&quot;,&quot;GABA-A receptor agonists/antagonists&quot;,&quot;GABAergic synapse&quot;,&quot;Galactose metabolism&quot;,&quot;Gap junction&quot;,&quot;Gastric acid secretion&quot;,&quot;Gastric cancer&quot;,&quot;Geraniol degradation&quot;,&quot;Glioma&quot;,&quot;Glucagon signaling pathway&quot;,&quot;Glucocorticoid and mineralocorticoid receptor agonists/antagonists&quot;,&quot;Glucosinolate biosynthesis&quot;,&quot;Glutamatergic synapse&quot;,&quot;Glutathione metabolism&quot;,&quot;Glycerolipid metabolism&quot;,&quot;Glycerophospholipid metabolism&quot;,&quot;Glycine, serine and threonine metabolism&quot;,&quot;Glycolysis / Gluconeogenesis&quot;,&quot;Glycosaminoglycan biosynthesis - chondroitin sulfate / dermatan sulfate&quot;,&quot;Glycosaminoglycan biosynthesis - heparan sulfate / heparin&quot;,&quot;Glycosaminoglycan biosynthesis - keratan sulfate&quot;,&quot;Glycosaminoglycan degradation&quot;,&quot;Glycosphingolipid biosynthesis - ganglio series&quot;,&quot;Glycosphingolipid biosynthesis - globo and isoglobo series&quot;,&quot;Glycosphingolipid biosynthesis - lacto and neolacto series&quot;,&quot;Glycosylphosphatidylinositol (GPI)-anchor biosynthesis&quot;,&quot;Glyoxylate and dicarboxylate metabolism&quot;,&quot;GnRH secretion&quot;,&quot;GnRH signaling pathway&quot;,&quot;Graft-versus-host disease&quot;,&quot;Growth hormone synthesis, secretion and action&quot;,&quot;Hedgehog signaling pathway&quot;,&quot;Hedgehog signaling pathway - fly&quot;,&quot;Hematopoietic cell lineage&quot;,&quot;Hepatitis B&quot;,&quot;Hepatitis C&quot;,&quot;Hepatocellular carcinoma&quot;,&quot;Herpes simplex virus 1 infection&quot;,&quot;HIF-1 signaling pathway&quot;,&quot;Hippo signaling pathway&quot;,&quot;Hippo signaling pathway - fly&quot;,&quot;Hippo signaling pathway - multiple species&quot;,&quot;Histamine H1 receptor antagonists&quot;,&quot;Histamine H2/H3 receptor agonists/antagonists&quot;,&quot;Histidine metabolism&quot;,&quot;HIV protease inhibitors&quot;,&quot;HMG-CoA reductase inhibitors&quot;,&quot;Homologous recombination&quot;,&quot;Human cytomegalovirus infection&quot;,&quot;Human immunodeficiency virus 1 infection&quot;,&quot;Human papillomavirus infection&quot;,&quot;Human T-cell leukemia virus 1 infection&quot;,&quot;Huntington disease&quot;,&quot;Hypertrophic cardiomyopathy&quot;,&quot;Hypnotics&quot;,&quot;IL-17 signaling pathway&quot;,&quot;Immunosuppressive agents&quot;,&quot;Indole alkaloid biosynthesis&quot;,&quot;Indole diterpene alkaloid biosynthesis&quot;,&quot;Inflammatory bowel disease&quot;,&quot;Inflammatory mediator regulation of TRP channels&quot;,&quot;Influenza A&quot;,&quot;Inositol phosphate metabolism&quot;,&quot;Insect hormone biosynthesis&quot;,&quot;Insulin resistance&quot;,&quot;Insulin secretion&quot;,&quot;Insulin signaling pathway&quot;,&quot;Intestinal immune network for IgA production&quot;,&quot;Ion transporter inhibitors&quot;,&quot;Isoflavonoid biosynthesis&quot;,&quot;Isoquinoline alkaloid biosynthesis&quot;,&quot;JAK-STAT signaling pathway&quot;,&quot;Kaposi sarcoma-associated herpesvirus infection&quot;,&quot;Legionellosis&quot;,&quot;Leishmaniasis&quot;,&quot;Leukocyte transendothelial migration&quot;,&quot;Limonene and pinene degradation&quot;,&quot;Linoleic acid metabolism&quot;,&quot;Lipid and atherosclerosis&quot;,&quot;Lipoarabinomannan (LAM) biosynthesis&quot;,&quot;Lipoic acid metabolism&quot;,&quot;Lipopolysaccharide biosynthesis&quot;,&quot;Local analgesics&quot;,&quot;Long-term depression&quot;,&quot;Long-term potentiation&quot;,&quot;Longevity regulating pathway&quot;,&quot;Longevity regulating pathway - multiple species&quot;,&quot;Longevity regulating pathway - worm&quot;,&quot;Lysine biosynthesis&quot;,&quot;Lysine degradation&quot;,&quot;Lysosome&quot;,&quot;Macrolides and ketolides&quot;,&quot;Malaria&quot;,&quot;Mannose type O-glycan biosynthesis&quot;,&quot;MAPK signaling pathway&quot;,&quot;MAPK signaling pathway - fly&quot;,&quot;MAPK signaling pathway - plant&quot;,&quot;MAPK signaling pathway - yeast&quot;,&quot;Maturity onset diabetes of the young&quot;,&quot;Measles&quot;,&quot;Meiosis - yeast&quot;,&quot;Melanogenesis&quot;,&quot;Melanoma&quot;,&quot;Metabolism of xenobiotics by cytochrome P450&quot;,&quot;Methane metabolism&quot;,&quot;MicroRNAs in cancer&quot;,&quot;Mineral absorption&quot;,&quot;Mismatch repair&quot;,&quot;Mitophagy - animal&quot;,&quot;Mitophagy - yeast&quot;,&quot;Monobactam biosynthesis&quot;,&quot;Monoterpenoid biosynthesis&quot;,&quot;Morphine addiction&quot;,&quot;mRNA surveillance pathway&quot;,&quot;mTOR signaling pathway&quot;,&quot;Mucin type O-glycan biosynthesis&quot;,&quot;N-Glycan biosynthesis&quot;,&quot;N-Methyl-D-aspartic acid (NMDA) receptor antagonists&quot;,&quot;Naphthalene degradation&quot;,&quot;Naphthalene family&quot;,&quot;Natural killer cell mediated cytotoxicity&quot;,&quot;Necroptosis&quot;,&quot;Neomycin, kanamycin and gentamicin biosynthesis&quot;,&quot;Neuroactive ligand-receptor interaction&quot;,&quot;Neurotransmitter transporter inhibitors&quot;,&quot;Neurotrophin signaling pathway&quot;,&quot;Neutrophil extracellular trap formation&quot;,&quot;NF-kappa B signaling pathway&quot;,&quot;Nicotinate and nicotinamide metabolism&quot;,&quot;Nicotine addiction&quot;,&quot;Nicotinic cholinergic receptor antagonists&quot;,&quot;Nitrogen metabolism&quot;,&quot;Nitrotoluene degradation&quot;,&quot;NOD-like receptor signaling pathway&quot;,&quot;Non-alcoholic fatty liver disease&quot;,&quot;Non-homologous end-joining&quot;,&quot;Non-small cell lung cancer&quot;,&quot;Nonribosomal peptide structures&quot;,&quot;Notch signaling pathway&quot;,&quot;Novobiocin biosynthesis&quot;,&quot;Nucleocytoplasmic transport&quot;,&quot;Nucleotide excision repair&quot;,&quot;O-Antigen nucleotide sugar biosynthesis&quot;,&quot;O-Antigen repeat unit biosynthesis&quot;,&quot;Olfactory transduction&quot;,&quot;One carbon pool by folate&quot;,&quot;Oocyte meiosis&quot;,&quot;Opioid analgesics&quot;,&quot;Opioid receptor agonists/antagonists&quot;,&quot;Osteoclast differentiation&quot;,&quot;Osteoporosis drugs&quot;,&quot;Other glycan degradation&quot;,&quot;Other types of O-glycan biosynthesis&quot;,&quot;Ovarian steroidogenesis&quot;,&quot;Overview of biosynthetic pathways&quot;,&quot;Oxidative phosphorylation&quot;,&quot;Oxytocin signaling pathway&quot;,&quot;p53 signaling pathway&quot;,&quot;Pancreatic cancer&quot;,&quot;Pancreatic secretion&quot;,&quot;Pantothenate and CoA biosynthesis&quot;,&quot;Parathyroid hormone synthesis, secretion and action&quot;,&quot;Parkinson disease&quot;,&quot;Pathogenic Escherichia coli infection&quot;,&quot;Pathways in cancer&quot;,&quot;Pathways of neurodegeneration - multiple diseases&quot;,&quot;PD-L1 expression and PD-1 checkpoint pathway in cancer&quot;,&quot;Penicillin and cephalosporin biosynthesis&quot;,&quot;Penicillins&quot;,&quot;Pentose and glucuronate interconversions&quot;,&quot;Pentose phosphate pathway&quot;,&quot;Peptidoglycan biosynthesis&quot;,&quot;Peroxisome&quot;,&quot;Peroxisome proliferator-activated receptor (PPAR) agonists&quot;,&quot;Pertussis&quot;,&quot;Phagosome&quot;,&quot;Phenazine biosynthesis&quot;,&quot;Phenylalanine metabolism&quot;,&quot;Phenylalanine, tyrosine and tryptophan biosynthesis&quot;,&quot;Phenylpropanoid biosynthesis&quot;,&quot;Phosphatidylinositol signaling system&quot;,&quot;Phospholipase D signaling pathway&quot;,&quot;Phosphonate and phosphinate metabolism&quot;,&quot;Phosphotransferase system (PTS)&quot;,&quot;Photosynthesis&quot;,&quot;Photosynthesis - antenna proteins&quot;,&quot;Phototransduction&quot;,&quot;Phototransduction - fly&quot;,&quot;PI3K-Akt signaling pathway&quot;,&quot;Plant hormone signal transduction&quot;,&quot;Plant-pathogen interaction&quot;,&quot;Platelet activation&quot;,&quot;Platinum drug resistance&quot;,&quot;Polycyclic aromatic hydrocarbon degradation&quot;,&quot;Polyketide sugar unit biosynthesis&quot;,&quot;Porphyrin metabolism&quot;,&quot;Potassium channel blocking and opening drugs&quot;,&quot;PPAR signaling pathway&quot;,&quot;Primary bile acid biosynthesis&quot;,&quot;Primary immunodeficiency&quot;,&quot;Prion disease&quot;,&quot;Prodigiosin biosynthesis&quot;,&quot;Progesterone-mediated oocyte maturation&quot;,&quot;Progesterone, androgen and estrogen receptor agonists/antagonists&quot;,&quot;Prolactin signaling pathway&quot;,&quot;Propanoate metabolism&quot;,&quot;Prostaglandins&quot;,&quot;Prostate cancer&quot;,&quot;Proteasome&quot;,&quot;Protein digestion and absorption&quot;,&quot;Protein export&quot;,&quot;Protein processing in endoplasmic reticulum&quot;,&quot;Proteoglycans in cancer&quot;,&quot;Proximal tubule bicarbonate reclamation&quot;,&quot;Purine metabolism&quot;,&quot;Pyrimidine metabolism&quot;,&quot;Pyruvate metabolism&quot;,&quot;Quinolines&quot;,&quot;Quinolones&quot;,&quot;Quorum sensing&quot;,&quot;Rap1 signaling pathway&quot;,&quot;Ras signaling pathway&quot;,&quot;Regulation of actin cytoskeleton&quot;,&quot;Regulation of lipolysis in adipocytes&quot;,&quot;Relaxin signaling pathway&quot;,&quot;Renal cell carcinoma&quot;,&quot;Renin secretion&quot;,&quot;Renin-angiotensin system&quot;,&quot;Renin-angiotensin system inhibitors&quot;,&quot;Retinoic acid receptor (RAR) and retinoid X receptor (RXR) agonists/antagonists&quot;,&quot;Retinol metabolism&quot;,&quot;Retrograde endocannabinoid signaling&quot;,&quot;Rheumatoid arthritis&quot;,&quot;Riboflavin metabolism&quot;,&quot;Ribosome&quot;,&quot;Ribosome biogenesis in eukaryotes&quot;,&quot;Rifamycins&quot;,&quot;RIG-I-like receptor signaling pathway&quot;,&quot;RNA degradation&quot;,&quot;RNA polymerase&quot;,&quot;Salivary secretion&quot;,&quot;Salmonella infection&quot;,&quot;Secondary bile acid biosynthesis&quot;,&quot;Selenocompound metabolism&quot;,&quot;Serotonergic synapse&quot;,&quot;Serotonin receptor agonists/antagonists&quot;,&quot;Sesquiterpenoid and triterpenoid biosynthesis&quot;,&quot;Shigellosis&quot;,&quot;Signaling pathways regulating pluripotency of stem cells&quot;,&quot;Small cell lung cancer&quot;,&quot;SNARE interactions in vesicular transport&quot;,&quot;Sodium channel blocking drugs&quot;,&quot;Sphingolipid metabolism&quot;,&quot;Sphingolipid signaling pathway&quot;,&quot;Spinocerebellar ataxia&quot;,&quot;Spliceosome&quot;,&quot;Staphylococcus aureus infection&quot;,&quot;Starch and sucrose metabolism&quot;,&quot;Staurosporine biosynthesis&quot;,&quot;Steroid biosynthesis&quot;,&quot;Steroid degradation&quot;,&quot;Steroid hormone biosynthesis&quot;,&quot;Stilbenoid, diarylheptanoid and gingerol biosynthesis&quot;,&quot;Streptomycin biosynthesis&quot;,&quot;Styrene degradation&quot;,&quot;Sulfonamide derivatives - diuretics&quot;,&quot;Sulfonamide derivatives - hypoglycemic agents&quot;,&quot;Sulfonamide derivatives - overview&quot;,&quot;Sulfonamide derivatives - sulfa drugs&quot;,&quot;Sulfur metabolism&quot;,&quot;Sulfur relay system&quot;,&quot;Synaptic vesicle cycle&quot;,&quot;Systemic lupus erythematosus&quot;,&quot;T cell receptor signaling pathway&quot;,&quot;Taste transduction&quot;,&quot;Taurine and hypotaurine metabolism&quot;,&quot;Teichoic acid biosynthesis&quot;,&quot;Terpenoid backbone biosynthesis&quot;,&quot;Tetracycline biosynthesis&quot;,&quot;Tetracyclines&quot;,&quot;TGF-beta signaling pathway&quot;,&quot;Th1 and Th2 cell differentiation&quot;,&quot;Th17 cell differentiation&quot;,&quot;Thermogenesis&quot;,&quot;Thiamine metabolism&quot;,&quot;Thyroid cancer&quot;,&quot;Thyroid hormone signaling pathway&quot;,&quot;Thyroid hormone synthesis&quot;,&quot;Tight junction&quot;,&quot;TNF signaling pathway&quot;,&quot;Toll and Imd signaling pathway&quot;,&quot;Toll-like receptor signaling pathway&quot;,&quot;Toluene degradation&quot;,&quot;Toxoplasmosis&quot;,&quot;Transcriptional misregulation in cancer&quot;,&quot;Tropane, piperidine and pyridine alkaloid biosynthesis&quot;,&quot;Tryptophan metabolism&quot;,&quot;Tuberculosis&quot;,&quot;Two-component system&quot;,&quot;Type I diabetes mellitus&quot;,&quot;Type I polyketide structures&quot;,&quot;Type II diabetes mellitus&quot;,&quot;Tyrosine metabolism&quot;,&quot;Ubiquinone and other terpenoid-quinone biosynthesis&quot;,&quot;Ubiquitin mediated proteolysis&quot;,&quot;Valine, leucine and isoleucine biosynthesis&quot;,&quot;Valine, leucine and isoleucine degradation&quot;,&quot;Vancomycin resistance&quot;,&quot;Various types of N-glycan biosynthesis&quot;,&quot;Vascular smooth muscle contraction&quot;,&quot;Vasopressin-regulated water reabsorption&quot;,&quot;VEGF signaling pathway&quot;,&quot;Vibrio cholerae infection&quot;,&quot;Viral carcinogenesis&quot;,&quot;Viral genome structure&quot;,&quot;Viral life cycle - HIV-1&quot;,&quot;Viral myocarditis&quot;,&quot;Viral protein interaction with cytokine and cytokine receptor&quot;,&quot;Viral replication&quot;,&quot;Virion - Adenovirus&quot;,&quot;Virion - Coronavirus New!&quot;,&quot;Virion - Enterovirus&quot;,&quot;Virion - Flavivirus&quot;,&quot;Virion - Herpesvirus&quot;,&quot;Virion - Human immunodeficiency virus&quot;,&quot;Virion - Influenza A virus&quot;,&quot;Virion - Lyssavirus&quot;,&quot;Virion - Orthopoxvirus&quot;,&quot;Vitamin B6 metabolism&quot;,&quot;Vitamin digestion and absorption&quot;,&quot;Wnt signaling pathway&quot;,&quot;Xylene degradation&quot;,&quot;Yersinia infection&quot;,&quot;Zeatin biosynthesis&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70","71","72","73","74","75","76","77","78","79","80","81","82","83","84","85","86","87","88","89","90","91","92","93","94","95","96","97","98","99","100","101","102","103","104","105","106","107","108","109","110","111","112","113","114","115","116","117","118","119","120","121","122","123","124","125","126","127","128","129","130","131","132","133","134","135","136","137","138","139","140","141","142","143","144","145","146","147","148","149","150","151","152","153","154","155","156","157","158","159","160","161","162","163","164","165","166","167","168","169","170","171","172","173","174","175","176","177","178","179","180","181","182","183","184","185","186","187","188","189","190","191","192","193","194","195","196","197","198","199","200","201","202","203","204","205","206","207","208","209","210","211","212","213","214","215","216","217","218","219","220","221","222","223","224","225","226","227","228","229","230","231","232","233","234","235","236","237","238","239","240","241","242","243","244","245","246","247","248","249","250","251","252","253","254","255","256","257","258","259","260","261","262","263","264","265","266","267","268","269","270","271","272","273","274","275","276","277","278","279","280","281","282","283","284","285","286","287","288","289","290","291","292","293","294","295","296","297","298","299","300","301","302","303","304","305","306","307","308","309","310","311","312","313","314","315","316","317","318","319","320","321","322","323","324","325","326","327","328","329","330","331","332","333","334","335","336","337","338","339","340","341","342","343","344","345","346","347","348","349","350","351","352","353","354","355","356","357","358","359","360","361","362","363","364","365","366","367","368","369","370","371","372","373","374","375","376","377","378","379","380","381","382","383","384","385","386","387","388","389","390","391","392","393","394","395","396","397","398","399","400","401","402","403","404","405","406","407","408","409","410","411","412","413","414","415","416","417","418","419","420","421","422","423","424","425","426","427","428","429","430","431","432","433","434","435","436","437","438","439","440","441","442","443","444","445","446","447","448","449","450","451","452","453","454","455","456","457","458","459","460","461","462","463","464","465","466","467","468","469","470","471","472","473","474","475","476","477","478","479","480","481","482","483","484","485","486","487","488","489","490","491","492","493","494","495","496","497","498","499","500","501","502","503","504","505","506","507","508","509","510","511","512","513","514","515","516","517","518","519","520","521","522","523","524","525","526","527","528","529","530","531","532","533","534","535","536","537","538","539","540","541","542","543","544","545","546","547","548","549","550","551"],[" Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Metabolism"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Genetic Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Environmental Information Processing"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Cellular Processes"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Organismal Systems"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Human Diseases"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"," Drug Development"],["1.1","1.1","1.1","1.1","1.1","1.1","1.1","1.1","1.1","1.1","1.1","1.1","1.1","1.1","1.1","1.2","1.2","1.2","1.2","1.2","1.2","1.2","1.2","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.3","1.4","1.4","1.5","1.5","1.5","1.5","1.5","1.5","1.5","1.5","1.5","1.5","1.5","1.5","1.5","1.5","1.6","1.6","1.6","1.6","1.6","1.6","1.6","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.7","1.8","1.8","1.8","1.8","1.8","1.8","1.8","1.8","1.8","1.8","1.8","1.8","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.9","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.10","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.11","1.12","1.12","1.12","1.12","1.12","1.12","1.12","1.12","1.12","2.1","2.1","2.1","2.2","2.2","2.2","2.2","2.2","2.3","2.3","2.3","2.3","2.3","2.3","2.3","2.4","2.4","2.4","2.4","2.4","2.4","2.4","2.5","2.5","2.5","2.5","2.5","2.5","2.5","2.5","2.5","2.5","2.5","2.5","3.1","3.1","3.1","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.2","3.3","3.3","3.3","3.3","3.3","4.1","4.1","4.1","4.1","4.1","4.1","4.1","4.1","4.1","4.2","4.2","4.2","4.2","4.2","4.2","4.2","4.2","4.2","4.2","4.2","4.2","4.3","4.3","4.3","4.3","4.3","4.4","4.4","4.4","4.4","4.5","4.5","4.5","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.1","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.2","5.3","5.3","5.3","5.4","5.4","5.4","5.4","5.4","5.4","5.4","5.4","5.4","5.4","5.5","5.5","5.5","5.5","5.5","5.6","5.6","5.6","5.6","5.6","5.6","5.6","5.6","5.6","5.6","5.7","5.7","5.7","5.7","5.7","5.8","5.8","5.8","5.8","5.9","5.9","5.9","5.10","5.10","5.10","5.10","5.10","5.10","6.1","6.1","6.1","6.1","6.1","6.1","6.1","6.1","6.1","6.1","6.1","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.2","6.3","6.3","6.3","6.3","6.3","6.3","6.3","6.3","6.3","6.3","6.3","6.3","6.4","6.4","6.4","6.4","6.4","6.4","6.4","6.4","6.4","6.4","6.4","6.5","6.5","6.5","6.5","6.5","6.5","6.6","6.6","6.6","6.6","6.6","6.6","6.6","6.6","6.7","6.7","6.7","6.7","6.7","6.7","6.7","6.8","6.8","6.8","6.8","6.8","6.9","6.9","6.9","6.9","6.9","6.9","6.9","6.10","6.10","6.10","6.10","6.10","6.10","6.10","6.10","6.11","6.11","6.11","6.12","6.12","6.12","6.12","7.1","7.1","7.1","7.1","7.1","7.1","7.1","7.1","7.1","7.1","7.1","7.2","7.2","7.2","7.2","7.2","7.3","7.3","7.3","7.3","7.3","7.3","7.3","7.3","7.3","7.3","7.3","7.4","7.4","7.4","7.4","7.4","7.4","7.4","7.4","7.4","7.4","7.4","7.4","7.4","7.4","7.5","7.5","7.5","7.5","7.5","7.5","7.5","7.5","7.5","7.5","7.6","7.6","7.6","7.6","7.7","7.7","7.7","7.7","7.7","7.7","7.8","7.8","7.9","7.9","7.9","7.9","7.9","7.10","7.10","7.10","7.11","7.11","7.11","7.11"],["Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Carbohydrate metabolism","Energy metabolism","Energy metabolism","Energy metabolism","Energy metabolism","Energy metabolism","Energy metabolism","Energy metabolism","Energy metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Lipid metabolism","Nucleotide metabolism","Nucleotide metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Amino acid metabolism","Metabolism of other amino acids","Metabolism of other amino acids","Metabolism of other amino acids","Metabolism of other amino acids","Metabolism of other amino acids","Metabolism of other amino acids","Metabolism of other amino acids","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Glycan biosynthesis and metabolism","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of cofactors and vitamins","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Metabolism of terpenoids and polyketides","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Biosynthesis of other secondary metabolites","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Xenobiotics biodegradation and metabolism","Chemical structure transformation maps","Chemical structure transformation maps","Chemical structure transformation maps","Chemical structure transformation maps","Chemical structure transformation maps","Chemical structure transformation maps","Chemical structure transformation maps","Chemical structure transformation maps","Chemical structure transformation maps","Transcription","Transcription","Transcription","Translation","Translation","Translation","Translation","Translation","Folding, sorting and degradation","Folding, sorting and degradation","Folding, sorting and degradation","Folding, sorting and degradation","Folding, sorting and degradation","Folding, sorting and degradation","Folding, sorting and degradation","Replication and repair","Replication and repair","Replication and repair","Replication and repair","Replication and repair","Replication and repair","Replication and repair","Information processing in viruses","Information processing in viruses","Information processing in viruses","Information processing in viruses","Information processing in viruses","Information processing in viruses","Information processing in viruses","Information processing in viruses","Information processing in viruses","Information processing in viruses","Information processing in viruses","Information processing in viruses","Membrane transport","Membrane transport","Membrane transport","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signal transduction","Signaling molecules and interaction","Signaling molecules and interaction","Signaling molecules and interaction","Signaling molecules and interaction","Signaling molecules and interaction","Transport and catabolism","Transport and catabolism","Transport and catabolism","Transport and catabolism","Transport and catabolism","Transport and catabolism","Transport and catabolism","Transport and catabolism","Transport and catabolism","Cell growth and death","Cell growth and death","Cell growth and death","Cell growth and death","Cell growth and death","Cell growth and death","Cell growth and death","Cell growth and death","Cell growth and death","Cell growth and death","Cell growth and death","Cell growth and death","Cellular community - eukaryotes","Cellular community - eukaryotes","Cellular community - eukaryotes","Cellular community - eukaryotes","Cellular community - eukaryotes","Cellular community - prokaryotes","Cellular community - prokaryotes","Cellular community - prokaryotes","Cellular community - prokaryotes","Cell motility","Cell motility","Cell motility","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Immune system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Endocrine system","Circulatory system","Circulatory system","Circulatory system","Digestive system","Digestive system","Digestive system","Digestive system","Digestive system","Digestive system","Digestive system","Digestive system","Digestive system","Digestive system","Excretory system","Excretory system","Excretory system","Excretory system","Excretory system","Nervous system","Nervous system","Nervous system","Nervous system","Nervous system","Nervous system","Nervous system","Nervous system","Nervous system","Nervous system","Sensory system","Sensory system","Sensory system","Sensory system","Sensory system","Development and regeneration","Development and regeneration","Development and regeneration","Development and regeneration","Aging","Aging","Aging","Environmental adaptation","Environmental adaptation","Environmental adaptation","Environmental adaptation","Environmental adaptation","Environmental adaptation","Cancer: overview","Cancer: overview","Cancer: overview","Cancer: overview","Cancer: overview","Cancer: overview","Cancer: overview","Cancer: overview","Cancer: overview","Cancer: overview","Cancer: overview","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Cancer: specific types","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: viral","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: bacterial","Infectious disease: parasitic","Infectious disease: parasitic","Infectious disease: parasitic","Infectious disease: parasitic","Infectious disease: parasitic","Infectious disease: parasitic","Immune disease","Immune disease","Immune disease","Immune disease","Immune disease","Immune disease","Immune disease","Immune disease","Neurodegenerative disease","Neurodegenerative disease","Neurodegenerative disease","Neurodegenerative disease","Neurodegenerative disease","Neurodegenerative disease","Neurodegenerative disease","Substance dependence","Substance dependence","Substance dependence","Substance dependence","Substance dependence","Cardiovascular disease","Cardiovascular disease","Cardiovascular disease","Cardiovascular disease","Cardiovascular disease","Cardiovascular disease","Cardiovascular disease","Endocrine and metabolic disease","Endocrine and metabolic disease","Endocrine and metabolic disease","Endocrine and metabolic disease","Endocrine and metabolic disease","Endocrine and metabolic disease","Endocrine and metabolic disease","Endocrine and metabolic disease","Drug resistance: antimicrobial","Drug resistance: antimicrobial","Drug resistance: antimicrobial","Drug resistance: antineoplastic","Drug resistance: antineoplastic","Drug resistance: antineoplastic","Drug resistance: antineoplastic","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antiinfectives","Chronology: Antineoplastics","Chronology: Antineoplastics","Chronology: Antineoplastics","Chronology: Antineoplastics","Chronology: Antineoplastics","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Nervous system agents","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Chronology: Other drugs","Target-based classification: G protein-coupled receptors","Target-based classification: G protein-coupled receptors","Target-based classification: G protein-coupled receptors","Target-based classification: G protein-coupled receptors","Target-based classification: G protein-coupled receptors","Target-based classification: G protein-coupled receptors","Target-based classification: G protein-coupled receptors","Target-based classification: G protein-coupled receptors","Target-based classification: G protein-coupled receptors","Target-based classification: G protein-coupled receptors","Target-based classification: Nuclear receptors","Target-based classification: Nuclear receptors","Target-based classification: Nuclear receptors","Target-based classification: Nuclear receptors","Target-based classification: Ion channels","Target-based classification: Ion channels","Target-based classification: Ion channels","Target-based classification: Ion channels","Target-based classification: Ion channels","Target-based classification: Ion channels","Target-based classification: Transporters","Target-based classification: Transporters","Target-based classification: Enzymes","Target-based classification: Enzymes","Target-based classification: Enzymes","Target-based classification: Enzymes","Target-based classification: Enzymes","Structure-based classification","Structure-based classification","Structure-based classification","Skeleton-based classification","Skeleton-based classification","Skeleton-based classification","Skeleton-based classification"],["Glycolysis / Gluconeogenesis","Citrate cycle (TCA cycle)","Pentose phosphate pathway","Pentose and glucuronate interconversions","Fructose and mannose metabolism","Galactose metabolism","Ascorbate and aldarate metabolism","Starch and sucrose metabolism","Amino sugar and nucleotide sugar metabolism","Pyruvate metabolism","Glyoxylate and dicarboxylate metabolism","Propanoate metabolism","Butanoate metabolism","C5-Branched dibasic acid metabolism","Inositol phosphate metabolism","Oxidative phosphorylation","Photosynthesis","Photosynthesis - antenna proteins","Carbon fixation in photosynthetic organisms","Carbon fixation pathways in prokaryotes","Methane metabolism","Nitrogen metabolism","Sulfur metabolism","Fatty acid biosynthesis","Fatty acid elongation","Fatty acid degradation","Cutin, suberine and wax biosynthesis","Steroid biosynthesis","Primary bile acid biosynthesis","Secondary bile acid biosynthesis","Steroid hormone biosynthesis","Glycerolipid metabolism","Glycerophospholipid metabolism","Ether lipid metabolism","Sphingolipid metabolism","Arachidonic acid metabolism","Linoleic acid metabolism","alpha-Linolenic acid metabolism","Biosynthesis of unsaturated fatty acids","Purine metabolism","Pyrimidine metabolism","Alanine, aspartate and glutamate metabolism","Glycine, serine and threonine metabolism","Cysteine and methionine metabolism","Valine, leucine and isoleucine degradation","Valine, leucine and isoleucine biosynthesis","Lysine biosynthesis","Lysine degradation","Arginine biosynthesis","Arginine and proline metabolism","Histidine metabolism","Tyrosine metabolism","Phenylalanine metabolism","Tryptophan metabolism","Phenylalanine, tyrosine and tryptophan biosynthesis","beta-Alanine metabolism","Taurine and hypotaurine metabolism","Phosphonate and phosphinate metabolism","Selenocompound metabolism","Cyanoamino acid metabolism","D-Amino acid metabolism","Glutathione metabolism","N-Glycan biosynthesis","Various types of N-glycan biosynthesis","Mucin type O-glycan biosynthesis","Mannose type O-glycan biosynthesis","Other types of O-glycan biosynthesis","Glycosaminoglycan biosynthesis - chondroitin sulfate / dermatan sulfate","Glycosaminoglycan biosynthesis - heparan sulfate / heparin","Glycosaminoglycan biosynthesis - keratan sulfate","Glycosaminoglycan degradation","Glycosylphosphatidylinositol (GPI)-anchor biosynthesis","Glycosphingolipid biosynthesis - lacto and neolacto series","Glycosphingolipid biosynthesis - globo and isoglobo series","Glycosphingolipid biosynthesis - ganglio series","Other glycan degradation","Lipopolysaccharide biosynthesis","O-Antigen repeat unit biosynthesis","O-Antigen nucleotide sugar biosynthesis","Peptidoglycan biosynthesis","Teichoic acid biosynthesis","Lipoarabinomannan (LAM) biosynthesis","Arabinogalactan biosynthesis - Mycobacterium","Exopolysaccharide biosynthesis","Thiamine metabolism","Riboflavin metabolism","Vitamin B6 metabolism","Nicotinate and nicotinamide metabolism","Pantothenate and CoA biosynthesis","Biotin metabolism","Lipoic acid metabolism","Folate biosynthesis","One carbon pool by folate","Retinol metabolism","Porphyrin metabolism","Ubiquinone and other terpenoid-quinone biosynthesis","Terpenoid backbone biosynthesis","Monoterpenoid biosynthesis","Sesquiterpenoid and triterpenoid biosynthesis","Diterpenoid biosynthesisIncluding: Gibberellin biosynthesis","Carotenoid biosynthesis","Brassinosteroid biosynthesis","Insect hormone biosynthesis","Zeatin biosynthesis","Limonene and pinene degradation","Geraniol degradation","Type I polyketide structures","Biosynthesis of 12-, 14- and 16-membered macrolidesIncluding: Tylosin biosynthesis, Mycinamicin biosynthesis, Erythromycin biosynthesis, Oleandomycin biosynthesis, Pikromycin/methymycin biosynthesis, Avermectin biosynthesis","Biosynthesis of ansamycins","Biosynthesis of enediyne antibiotics","Biosynthesis of type II polyketide backbone","Biosynthesis of type II polyketide products","Tetracycline biosynthesis","Polyketide sugar unit biosynthesis","Nonribosomal peptide structures","Biosynthesis of siderophore group nonribosomal peptides","Biosynthesis of vancomycin group antibiotics","Phenylpropanoid biosynthesis","Stilbenoid, diarylheptanoid and gingerol biosynthesis","Flavonoid biosynthesis","Flavone and flavonol biosynthesis","Anthocyanin biosynthesis","Isoflavonoid biosynthesis","Degradation of flavonoids New!","Indole alkaloid biosynthesis","Indole diterpene alkaloid biosynthesis","Isoquinoline alkaloid biosynthesis","Tropane, piperidine and pyridine alkaloid biosynthesis","Biosynthesis of various alkaloidsIncluding: Cucurbitacin biosynthesis, Solanine and tomatine biosynthesis, Ephedrine biosynthesis, Capsaicin biosynthesis, Acridone alkaloid biosynthesis","Caffeine metabolism","Betalain biosynthesis","Glucosinolate biosynthesis","Benzoxazinoid biosynthesis","Penicillin and cephalosporin biosynthesis","Carbapenem biosynthesis","Monobactam biosynthesis","Clavulanic acid biosynthesis","Streptomycin biosynthesis","Neomycin, kanamycin and gentamicin biosynthesis","Acarbose and validamycin biosynthesis","Novobiocin biosynthesis","Staurosporine biosynthesis","Phenazine biosynthesis","Prodigiosin biosynthesis","Aflatoxin biosynthesis","Biosynthesis of various antibioticsIncluding: Kanosamine biosynthesis, Aurachin biosynthesis, Bacilysin biosynthesis, Puromycin biosynthesis, Dapdiamides biosynthesis, Fosfomycin biosynthesis, Cremeomycin biosynthesis, Pentalenolactone biosynthesis, Terpentecin biosynthesis, Roseoflavin biosynthesis, Cycloserine biosynthesis","Biosynthesis of various plant secondary metabolitesIncluding: Crocin biosynthesis, Cannabidiol biosynthesis, Mugineic acid biosynthesis, Pentagalloylglucose biosynthesis, Benzoxazinoid biosynthesis, Gramine biosynthesis, Coumarin biosynthesis, Furanocoumarin biosynthesis, Hordatine biosynthesis, Podophyllotoxin biosynthesis","Biosynthesis of various other secondary metabolitesIncluding: Ditryptophenaline biosynthesis, Fumiquinazoline D biosynthesis, Paerucumarin biosynthesis, Staphyloferrin B biosynthesis, Cyclooctatin biosynthesis, Lovastatin biosynthesis, Grixazone biosynthesis, Staphyloferrin A biosynthesis, Ethynylserine biosynthesis, Aerobactin biosynthesis","Benzoate degradation","Aminobenzoate degradation","Fluorobenzoate degradation","Chloroalkane and chloroalkene degradation","Chlorocyclohexane and chlorobenzene degradation","Toluene degradation","Xylene degradation","Nitrotoluene degradation","Ethylbenzene degradation","Styrene degradation","Atrazine degradation","Caprolactam degradation","Bisphenol degradation","Dioxin degradation","Naphthalene degradation","Polycyclic aromatic hydrocarbon degradation","Furfural degradation","Steroid degradation","Metabolism of xenobiotics by cytochrome P450","Drug metabolism - cytochrome P450","Drug metabolism - other enzymes","Overview of biosynthetic pathways","Biosynthesis of plant secondary metabolites","Biosynthesis of phenylpropanoids","Biosynthesis of terpenoids and steroids","Biosynthesis of alkaloids derived from shikimate pathway","Biosynthesis of alkaloids derived from ornithine, lysine and nicotinic acid","Biosynthesis of alkaloids derived from histidine and purine","Biosynthesis of alkaloids derived from terpenoid and polyketide","Biosynthesis of plant hormones","RNA polymerase","Basal transcription factors","Spliceosome","Ribosome","Aminoacyl-tRNA biosynthesis","Nucleocytoplasmic transport","mRNA surveillance pathway","Ribosome biogenesis in eukaryotes","Protein export","Protein processing in endoplasmic reticulum","SNARE interactions in vesicular transport","Ubiquitin mediated proteolysis","Sulfur relay system","Proteasome","RNA degradation","DNA replication","Base excision repair","Nucleotide excision repair","Mismatch repair","Homologous recombination","Non-homologous end-joining","Fanconi anemia pathway","Viral genome structure","Viral replication","Viral life cycle - HIV-1","Virion - Human immunodeficiency virus","Virion - Coronavirus New!","Virion - Influenza A virus","Virion - Enterovirus","Virion - Flavivirus","Virion - Lyssavirus","Virion - Herpesvirus","Virion - Orthopoxvirus","Virion - Adenovirus","ABC transporters","Phosphotransferase system (PTS)","Bacterial secretion system","Two-component system","MAPK signaling pathway","MAPK signaling pathway - fly","MAPK signaling pathway - plant","MAPK signaling pathway - yeast","ErbB signaling pathway","Ras signaling pathway","Rap1 signaling pathway","Wnt signaling pathway","Notch signaling pathway","Hedgehog signaling pathway","Hedgehog signaling pathway - fly","TGF-beta signaling pathway","Hippo signaling pathway","Hippo signaling pathway - fly","Hippo signaling pathway - multiple species","VEGF signaling pathway","Apelin signaling pathway","JAK-STAT signaling pathway","NF-kappa B signaling pathway","TNF signaling pathway","HIF-1 signaling pathway","FoxO signaling pathway","Calcium signaling pathway","Phosphatidylinositol signaling system","Phospholipase D signaling pathway","Sphingolipid signaling pathway","cAMP signaling pathway","cGMP-PKG signaling pathway","PI3K-Akt signaling pathway","AMPK signaling pathway","mTOR signaling pathway","Plant hormone signal transduction","Neuroactive ligand-receptor interaction","Cytokine-cytokine receptor interaction","Viral protein interaction with cytokine and cytokine receptor","ECM-receptor interaction","Cell adhesion molecules","Endocytosis","Phagosome","Lysosome","Peroxisome","Autophagy - animal","Autophagy - yeast","Autophagy - other","Mitophagy - animal","Mitophagy - yeast","Cell cycle","Cell cycle - yeast","Cell cycle - Caulobacter","Meiosis - yeast","Oocyte meiosis","Apoptosis","Apoptosis - fly","Apoptosis - multiple species","Ferroptosis","Necroptosis","p53 signaling pathway","Cellular senescence","Focal adhesion","Adherens junction","Tight junction","Gap junction","Signaling pathways regulating pluripotency of stem cells","Quorum sensing","Biofilm formation - Vibrio cholerae","Biofilm formation - Pseudomonas aeruginosa","Biofilm formation - Escherichia coli","Bacterial chemotaxis","Flagellar assembly","Regulation of actin cytoskeleton","Hematopoietic cell lineage","Complement and coagulation cascades","Platelet activation","Neutrophil extracellular trap formation","Toll-like receptor signaling pathway","Toll and Imd signaling pathway","NOD-like receptor signaling pathway","RIG-I-like receptor signaling pathway","Cytosolic DNA-sensing pathway","C-type lectin receptor signaling pathway","Natural killer cell mediated cytotoxicity","Antigen processing and presentation","T cell receptor signaling pathway","Th1 and Th2 cell differentiation","Th17 cell differentiation","IL-17 signaling pathway","B cell receptor signaling pathway","Fc epsilon RI signaling pathway","Fc gamma R-mediated phagocytosis","Leukocyte transendothelial migration","Intestinal immune network for IgA production","Chemokine signaling pathway","Insulin secretion","Insulin signaling pathway","Glucagon signaling pathway","Regulation of lipolysis in adipocytes","Adipocytokine signaling pathway","PPAR signaling pathway","GnRH secretion","GnRH signaling pathway","Ovarian steroidogenesis","Estrogen signaling pathway","Progesterone-mediated oocyte maturation","Prolactin signaling pathway","Oxytocin signaling pathway","Relaxin signaling pathway","Growth hormone synthesis, secretion and action","Thyroid hormone synthesis","Thyroid hormone signaling pathway","Parathyroid hormone synthesis, secretion and action","Melanogenesis","Renin secretion","Renin-angiotensin system","Aldosterone synthesis and secretion","Cortisol synthesis and secretion","Cardiac muscle contraction","Adrenergic signaling in cardiomyocytes","Vascular smooth muscle contraction","Salivary secretion","Gastric acid secretion","Pancreatic secretion","Bile secretion","Carbohydrate digestion and absorption","Protein digestion and absorption","Fat digestion and absorption","Cholesterol metabolism","Vitamin digestion and absorption","Mineral absorption","Vasopressin-regulated water reabsorption","Aldosterone-regulated sodium reabsorption","Endocrine and other factor-regulated calcium reabsorption","Proximal tubule bicarbonate reclamation","Collecting duct acid secretion","Glutamatergic synapse","GABAergic synapse","Cholinergic synapse","Dopaminergic synapse","Serotonergic synapse","Long-term potentiation","Long-term depression","Retrograde endocannabinoid signaling","Synaptic vesicle cycle","Neurotrophin signaling pathway","Phototransduction","Phototransduction - fly","Olfactory transduction","Taste transduction","Inflammatory mediator regulation of TRP channels","Dorso-ventral axis formation","Axon guidance","Axon regeneration","Osteoclast differentiation","Longevity regulating pathway","Longevity regulating pathway - worm","Longevity regulating pathway - multiple species","Circadian rhythm","Circadian entrainment","Circadian rhythm - fly","Circadian rhythm - plant","Thermogenesis","Plant-pathogen interaction","Pathways in cancer","Transcriptional misregulation in cancer","MicroRNAs in cancer","Proteoglycans in cancer","Chemical carcinogenesis - DNA adducts","Chemical carcinogenesis - receptor activation","Chemical carcinogenesis - reactive oxygen species","Viral carcinogenesis","Central carbon metabolism in cancer","Choline metabolism in cancer","PD-L1 expression and PD-1 checkpoint pathway in cancer","Colorectal cancer","Pancreatic cancer","Hepatocellular carcinoma","Gastric cancer","Glioma","Thyroid cancer","Acute myeloid leukemia","Chronic myeloid leukemia","Basal cell carcinoma","Melanoma","Renal cell carcinoma","Bladder cancer","Prostate cancer","Endometrial cancer","Breast cancer","Small cell lung cancer","Non-small cell lung cancer","Human T-cell leukemia virus 1 infection","Human immunodeficiency virus 1 infection","Hepatitis B","Hepatitis C","Coronavirus disease - COVID-19","Influenza A","Measles","Herpes simplex virus 1 infection","Human cytomegalovirus infection","Kaposi sarcoma-associated herpesvirus infection","Epstein-Barr virus infection","Human papillomavirus infection","Vibrio cholerae infection","Epithelial cell signaling in Helicobacter pylori infection","Pathogenic Escherichia coli infection","Salmonella infection","Shigellosis","Yersinia infection","Pertussis","Legionellosis","Staphylococcus aureus infection","Tuberculosis","Bacterial invasion of epithelial cells","Amoebiasis","Malaria","Toxoplasmosis","Leishmaniasis","Chagas disease","African trypanosomiasis","Asthma","Systemic lupus erythematosus","Rheumatoid arthritis","Autoimmune thyroid disease","Inflammatory bowel disease","Allograft rejection","Graft-versus-host disease","Primary immunodeficiency","Alzheimer disease","Parkinson disease","Amyotrophic lateral sclerosis","Huntington disease","Spinocerebellar ataxia","Prion disease","Pathways of neurodegeneration - multiple diseases","Cocaine addiction","Amphetamine addiction","Morphine addiction","Nicotine addiction","Alcoholism","Lipid and atherosclerosis","Fluid shear stress and atherosclerosis","Hypertrophic cardiomyopathy","Arrhythmogenic right ventricular cardiomyopathy","Dilated cardiomyopathy","Diabetic cardiomyopathy","Viral myocarditis","Type II diabetes mellitus","Type I diabetes mellitus","Maturity onset diabetes of the young","Alcoholic liver disease","Non-alcoholic fatty liver disease","Insulin resistance","AGE-RAGE signaling pathway in diabetic complications","Cushing syndrome","beta-Lactam resistance","Vancomycin resistance","Cationic antimicrobial peptide (CAMP) resistance","EGFR tyrosine kinase inhibitor resistance","Platinum drug resistance","Antifolate resistance","Endocrine resistance","Penicillins","Cephalosporins - parenteral agents","Cephalosporins - oral agents","Aminoglycosides","Tetracyclines","Macrolides and ketolides","Quinolones","Rifamycins","Antifungal agents","Antiviral agents","Anti-HIV agents","Antineoplastics - alkylating agents","Antineoplastics - antimetabolic agents","Antineoplastics - agents from natural products","Antineoplastics - hormones","Antineoplastics - protein kinase inhibitors","Hypnotics","Anxiolytics","Anticonvulsants","Local analgesics","Opioid analgesics","Antipsychotics","Antipsychotics - phenothiazines","Antipsychotics - butyrophenones","Antidepressants","Agents for Alzheimer-type dementia","Antiparkinsonian agents","Sulfonamide derivatives - overview","Sulfonamide derivatives - sulfa drugs","Sulfonamide derivatives - diuretics","Sulfonamide derivatives - hypoglycemic agents","Antiarrhythmic drugs","Antiulcer drugs","Immunosuppressive agents","Osteoporosis drugs","Antimigraines","Antithrombosis agents","Antirheumatics - DMARDs and biological agents","Antidiabetics","Antidyslipidemic agents","Antiglaucoma agents","Cholinergic and anticholinergic drugs","alpha-Adrenergic receptor agonists/antagonists","beta-Adrenergic receptor agonists/antagonists","Dopamine receptor agonists/antagonists","Histamine H1 receptor antagonists","Histamine H2/H3 receptor agonists/antagonists","Serotonin receptor agonists/antagonists","Eicosanoid receptor agonists/antagonists","Opioid receptor agonists/antagonists","Angiotensin receptor and endothelin receptor antagonists","Glucocorticoid and mineralocorticoid receptor agonists/antagonists","Progesterone, androgen and estrogen receptor agonists/antagonists","Retinoic acid receptor (RAR) and retinoid X receptor (RXR) agonists/antagonists","Peroxisome proliferator-activated receptor (PPAR) agonists","Nicotinic cholinergic receptor antagonists","GABA-A receptor agonists/antagonists","Calcium channel blocking drugs","Sodium channel blocking drugs","Potassium channel blocking and opening drugs","N-Methyl-D-aspartic acid (NMDA) receptor antagonists","Ion transporter inhibitors","Neurotransmitter transporter inhibitors","Catecholamine transferase inhibitors","Cyclooxygenase inhibitors","HMG-CoA reductase inhibitors","Renin-angiotensin system inhibitors","HIV protease inhibitors","Quinolines","Eicosanoids","Prostaglandins","Benzoic acid family","1,2-Diphenyl substitution family","Naphthalene family","Benzodiazepine family"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Category<\/th>\n      <th>subNumber<\/th>\n      <th>subcategory<\/th>\n      <th>pathways<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true},"selection":{"mode":"multiple","selected":null,"target":"row","selectable":null}},"evals":[],"jsHooks":[]}</script>
+<p>Irrelevant categories as shown below were filtered out:</p>
+<pre class="r"><code>keggCategory %&gt;%
+  dplyr::filter(subNumber %in% c(&quot;5.3&quot;, &quot;5.4&quot;, &quot;5.5&quot;, &quot;5.6&quot;, &quot;5.7&quot;, 
+                                  &quot;6.3&quot;, &quot;6.4&quot;, &quot;6.5&quot;, &quot;6.6&quot;, &quot;6.8&quot;, &quot;6.12&quot;)) %&gt;%
+  pull(subcategory) %&gt;%
+  unique()</code></pre>
+<pre><code> [1] &quot;Circulatory system&quot;              &quot;Digestive system&quot;               
+ [3] &quot;Excretory system&quot;                &quot;Nervous system&quot;                 
+ [5] &quot;Sensory system&quot;                  &quot;Infectious disease: viral&quot;      
+ [7] &quot;Infectious disease: bacterial&quot;   &quot;Infectious disease: parasitic&quot;  
+ [9] &quot;Immune disease&quot;                  &quot;Substance dependence&quot;           
+[11] &quot;Drug resistance: antineoplastic&quot;</code></pre>
+<pre class="r"><code>gsTokeep &lt;- keggCategory %&gt;%
+    mutate(pathways = paste(&quot;kegg.&quot;, pathways, sep = &quot;&quot;))  %&gt;%
+  dplyr::filter(pathways %in% names(gsTopology)) %&gt;%
+  dplyr::filter(!subNumber %in% c(&quot;5.3&quot;, &quot;5.4&quot;, &quot;5.5&quot;, &quot;5.6&quot;, &quot;5.7&quot;,
+                                  &quot;6.3&quot;, &quot;6.4&quot;, &quot;6.5&quot;, &quot;6.6&quot;, &quot;6.8&quot;, &quot;6.12&quot;)) %&gt;%
+    pull(pathways)
+#saveRDS(gsTokeep, file = here::here(&quot;output/kg_gsTokeep.rds&quot;))
+gsTokeep &lt;- readRDS(here::here(&quot;output/kg_gsTokeep.rds&quot;))
+gsTopology &lt;- gsTopology[names(gsTopology) %in% gsTokeep]</code></pre>
+<pre class="r"><code>gsAnnotation_df &lt;- keggCategory %&gt;%
+     mutate(pathways = paste(&quot;kegg.&quot;, pathways, sep = &quot;&quot;))  %&gt;%
+    dplyr::select(gs_name = pathways,
+                  category = subcategory)
+#save(gsAnnotation_df, file = here::here(&quot;data/gsAnnotation.rda&quot;))</code></pre>
+<p>235 KEGG pathways are kept after filtering.</p>
+</div>
+<div id="ssnappy" class="section level1">
+<h1>sSNAPPY</h1>
+<p>Weighted single-sample logFC (ssFC) were calculated within each
+sample.</p>
+<pre class="r"><code>weightedFC_tumor &lt;- sSNAPPY::weight_ss_fc(logCPM_tumor, tumor_sample, groupBy = &quot;patient&quot;, treatColumn = &quot;treat&quot;, sampleColumn = &quot;name&quot;)</code></pre>
+<p>Raw single sample perturbation scores for each treated sample each
+KEGG pathway were calculated.</p>
+<pre class="r"><code>genePertScore_tumor &lt;- raw_gene_pert(weightedFC_tumor$weighted_logFC, gsTopology)
+ssPertScore_tumor &lt;- pathway_pert(genePertScore_tumor, weightedFC_tumor$weighted_logFC)</code></pre>
+<p>Null distribution of perturbation scores were generated through
+sample permutation. 31 x 32 = 992 permuted pseudo-pairs were formed to
+compute permuted perturbation scores.</p>
+<pre class="r"><code># set.seed(123)
+# permutedScore_tumor &lt;- generate_permuted_scores(
+#     logCPM_tumor,
+#     gsTopology = gsTopology,
+#    weight = weightedFC_tumor$weight
+# )
+# write_rds(permutedScore_tumor, here::here(&quot;output/permutedscore_tumor.rds&quot;))
+permutedScore_tumor &lt;- read_rds(here::here(&quot;output/permutedscore_tumor.rds&quot;))</code></pre>
+<p>Six random permutation-simulated null distributions were sampled and
+plotted. As expected, they are all very close to normally
+distribution.</p>
+<pre class="r"><code>pl &lt;- permutedScore_tumor %&gt;%
+    keep(~all(.!=0)) %&gt;%
+    .[sample(seq_along(.), 6)] %&gt;%
+    lapply(
+      function(x){
+        ggplot(mapping = aes(x)) + 
+          geom_histogram() +
+          xlab(&quot;Perturbation Score&quot;)
+      }
+    ) 
+plot_grid(plotlist = pl, nrow = 2)</code></pre>
+<p><img src="figure/sSNAPPY.Rmd/hist_pl_tumor-1.png" width="960" style="display: block; margin: auto;" /></p>
+<div id="sample-wise-significance" class="section level2">
+<h2>Sample-wise significance</h2>
+<p>Raw perturbation scores were converted to robust z-scores based on
+the median and MAD derived from the null distributions. A two-side
+permutation p-value was computed for each z-score and corrected for
+multiple testings.</p>
+<p>There wasn’t any pathway that was significantly perturbed on
+single-sample level among tumor samples.</p>
+<pre class="r"><code>normalisedScores_tumor &lt;- normalise_by_permu(permutedScore_tumor, ssPertScore_tumor)
+# saveRDS(normalisedScores_tumor, here::here(&quot;output/normalisedScores_tumor.rds&quot;))
+normalisedScores_tumor %&gt;%
+    dplyr::filter(adjPvalue &lt; 0.05) </code></pre>
+<pre><code>[1] MAD       MEDIAN    gs_name   sample    score     robustZ   pvalue   
+[8] adjPvalue
+&lt;0 rows&gt; (or 0-length row.names)</code></pre>
+</div>
+<div id="average-treatment-effect" class="section level2">
+<h2>Average treatment-effect</h2>
+<div id="pca-plots" class="section level3">
+<h3>PCA plots</h3>
+<p>Correlations between the first three principle components of pathway
+activities and patients metadata were visualised below. As seen in the
+gene-level PCA, the differet tumour subtypes (i.e. IDC-like/ILC-like) is
+still the strongest confounding factor.</p>
+<pre class="r"><code>zmad_pca_tumor &lt;- normalisedScores_tumor %&gt;%
+    bind_rows() %&gt;%
+    dplyr::select(gs_name, robustZ, sample) %&gt;%
+    pivot_wider(names_from = sample, values_from = robustZ) %&gt;%
+    column_to_rownames(&quot;gs_name&quot;) %&gt;%
+    replace(is.na(.), 0) %&gt;%
+    t() %&gt;%
+    prcomp() 
+zmad_pca_tumor$x %&gt;%
+    as.data.frame() %&gt;%
+    rownames_to_column(&quot;name&quot;) %&gt;%
+    left_join(tumor_sample)   %&gt;%
+    dplyr::select(PC1, PC2, PC3, Ptient = patient, 
+                  Treatment = treat, 
+                  Subtype = Diagnosis, 
+                  Age
+                  ) %&gt;%
+    mutate_all(as.numeric) %&gt;%
+    cor() %&gt;% 
+    corrplot(
+        type = &quot;lower&quot;, 
+        diag = FALSE, 
+        addCoef.col = &quot;black&quot;, 
+        col = rev(COL2(&#39;RdBu&#39;, 200)),
+        addCoefasPercent = TRUE
+    )</code></pre>
+<div class="figure" style="text-align: center">
+<img src="figure/sSNAPPY.Rmd/zmad_pca_tumor-1.png" alt="*Correlations between the first three components of KEGG pathway activities and patients metadata among tumor samples. As seen in the gene-level PCA, the differet tumour subtypes (i.e. IDC-like/ILC-like) is still the strongest confounding factor.*" width="960" />
+<p class="caption">
+<em>Correlations between the first three components of KEGG pathway
+activities and patients metadata among tumor samples. As seen in the
+gene-level PCA, the differet tumour subtypes (i.e. IDC-like/ILC-like) is
+still the strongest confounding factor.</em>
+</p>
+</div>
+<pre class="r"><code>new_diag_col &lt;- qualitative_hcl(2, palette = &quot;Dark 3&quot;) %&gt;%
+    set_names(c(&quot;IDC-like&quot;, &quot;ILC-like&quot;))
+new_treat_col &lt;- qualitative_hcl(4, palette = &quot;Dynamic&quot;) %&gt;%
+    set_names(levels(tumor_sample$treat))</code></pre>
+</div>
+<div id="fit-models" class="section level3 tabset">
+<h3 class="tabset">Fit models</h3>
+<p>To make the results more interpretable biologically,
+<code>treatment</code> and <code>diagnosis</code> was combined into one
+co-factor to model treatment-level pathway activities with each tumour
+subtype.</p>
+<pre class="r"><code>fit_tumor &lt;- normalisedScores_tumor %&gt;%
+    left_join(tumor_sample %&gt;%
+                  dplyr::rename(
+                      sample = name
+                  )) %&gt;%
+    mutate(group = paste(treat, Diagnosis, sep = &quot;_&quot;), 
+           group = as.factor(group)) %&gt;%
+    split(f = .$gs_name) %&gt;%
+    lapply(function(x)lm(robustZ ~ 0 + group, data = x))  %&gt;%
+    lapply(summary)
+treat_sig_tumor &lt;- sapply(names(fit_tumor), function(x){
+    fit_tumor[[x]]$coefficients %&gt;%
+        as.data.frame() %&gt;%
+        .[, c(&quot;t value&quot; ,&quot;Pr(&gt;|t|)&quot;)] %&gt;%
+        rownames_to_column(&quot;Comparison&quot;) %&gt;%
+        dplyr::rename(`P-value` = `Pr(&gt;|t|)`, 
+                      `t statistic` = `t value`) %&gt;%
+        mutate(
+            Comparison = str_remove_all(Comparison, &quot;group&quot;), 
+            FDR = p.adjust(`P-value`, &quot;fdr&quot;), 
+            gs_name = x)}, 
+    simplify = FALSE) %&gt;%
+    bind_rows() </code></pre>
+<pre class="r"><code>sig_tumor_ls &lt;- treat_sig_tumor %&gt;% 
+    dplyr::filter(FDR &lt; 0.05) %&gt;%
+    split(f = .$Comparison)</code></pre>
+<p>The pathways that were on average perturbed due to each treatment
+among tumor samples were:</p>
+<pre class="r"><code>treat_sig_tumor %&gt;% 
+    dplyr::filter(FDR &lt; 0.05) %&gt;%
+    mutate_at(vars(c(&quot;Comparison&quot;, &quot;gs_name&quot;)), as.factor) %&gt;%
+    mutate_if(is.numeric, sprintf, fmt = &#39;%#.4f&#39;) %&gt;%
+    mutate(
+        Direction = ifelse(`t statistic` &lt; 0, &quot;Inhibited&quot;, &quot;Activation&quot;), 
+        gs_name = str_remove_all(gs_name, &quot;kegg.&quot;)) %&gt;%
+    dplyr::select(
+        Comparison, `t statistic`, Direction,
+        `Gene-set name` = gs_name, 
+        FDR
+    ) %&gt;%
+    datatable(
+        filter = &quot;top&quot;, 
+        options = list(
+            columnDefs = list(list(targets = &quot;Direction&quot;, visible = FALSE))
+        )
+    ) %&gt;% 
+    formatStyle(
+        &#39;t statistic&#39;, &#39;Direction&#39;,
+        color = styleEqual(c(&quot;Inhibited&quot;, &quot;Activation&quot;), c(&#39;blue&#39;, &#39;red&#39;))
+    )</code></pre>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-1ca44c382716567b3ade" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-1ca44c382716567b3ade">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td><\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;DHT_IDC-like&quot;,&quot;E2_ILC-like&quot;,&quot;E2+DHT_IDC-like&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25"],["E2+DHT_IDC-like","DHT_IDC-like","E2_ILC-like","DHT_IDC-like","E2_ILC-like","E2+DHT_IDC-like","E2+DHT_IDC-like","DHT_IDC-like","DHT_IDC-like","E2_ILC-like","E2+DHT_IDC-like","E2_ILC-like","DHT_IDC-like","E2+DHT_IDC-like","DHT_IDC-like","E2+DHT_IDC-like","DHT_IDC-like","E2+DHT_IDC-like","E2+DHT_IDC-like","DHT_IDC-like","DHT_IDC-like","E2+DHT_IDC-like","E2+DHT_IDC-like","E2+DHT_IDC-like","E2_ILC-like"],["4.2406","2.9581","-2.9625","-4.3881","3.3607","-3.0632","3.1520","-3.1495","2.8125","-2.7119","3.2172","-3.3385","2.6909","3.1352","3.5969","3.2820","3.1099","3.4839","3.1648","-3.2298","4.7504","2.9071","3.5311","3.5433","-3.2971"],["Activation","Activation","Inhibited","Inhibited","Activation","Inhibited","Activation","Inhibited","Activation","Inhibited","Activation","Inhibited","Activation","Activation","Activation","Activation","Activation","Activation","Activation","Inhibited","Activation","Activation","Activation","Activation","Inhibited"],["Amyotrophic lateral sclerosis","Apoptosis","Apoptosis","Cell cycle","Cell cycle","Cell cycle","Fc gamma R-mediated phagocytosis","Hedgehog signaling pathway","HIF-1 signaling pathway","HIF-1 signaling pathway","Intestinal immune network for IgA production","JAK-STAT signaling pathway","Lipid and atherosclerosis","Lipid and atherosclerosis","Longevity regulating pathway - multiple species","Longevity regulating pathway - multiple species","Neuroactive ligand-receptor interaction","Neutrophil extracellular trap formation","NF-kappa B signaling pathway","p53 signaling pathway","Regulation of lipolysis in adipocytes","Regulation of lipolysis in adipocytes","Toll-like receptor signaling pathway","Transcriptional misregulation in cancer","Wnt signaling pathway"],["0.0033","0.0264","0.0264","0.0024","0.0111","0.0141","0.0349","0.0351","0.0444","0.0444","0.0303","0.0234","0.0464","0.0362","0.0132","0.0132","0.0382","0.0171","0.0340","0.0295","0.0011","0.0294","0.0154","0.0150","0.0255"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Comparison<\/th>\n      <th>t statistic<\/th>\n      <th>Direction<\/th>\n      <th>Gene-set name<\/th>\n      <th>FDR<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"targets":3,"visible":false},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true,"rowCallback":"function(row, data, displayNum, displayIndex, dataIndex) {\nvar value=data[3]; $(this.api().cell(row, 2).node()).css({'color':value == \"Inhibited\" ? \"blue\" : value == \"Activation\" ? \"red\" : null});\n}"},"selection":{"mode":"multiple","selected":null,"target":"row","selectable":null}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+<p>The significantly perturbed pathways are labelled in black in the
+heatmap below:</p>
+<pre class="r"><code>gs2plot &lt;- treat_sig_tumor %&gt;%
+    # dplyr::filter(str_detect(Comparison, &quot;infiltrating|invasive&quot;)) %&gt;%
+    dplyr::filter(FDR &lt; 0.05) %&gt;%
+    pull(gs_name) %&gt;%
+    unique()
+rowO &lt;-  treat_sig_tumor %&gt;%
+    dplyr::filter(gs_name %in% gs2plot) %&gt;%
+    mutate(gs_name = str_remove_all(gs_name, &quot;kegg.&quot;)) %&gt;%
+    dplyr::select(-c(&quot;FDR&quot;, &quot;P-value&quot;)) %&gt;%
+    pivot_wider(names_from = Comparison, values_from = `t statistic`) %&gt;%
+    replace(is.na(.),0) %&gt;%
+    column_to_rownames(&quot;gs_name&quot;) %&gt;%
+    dist() %&gt;%
+    hclust() 
+treat_sig_tumor %&gt;%
+   dplyr::filter(gs_name %in% gs2plot)  %&gt;%
+    mutate(
+        Sig = ifelse(FDR &lt; 0.05, TRUE, FALSE),
+        `t statistic` = round(`t statistic`, 2),
+        FDR = sprintf(FDR, fmt = &#39;%#.4f&#39;),
+        label = paste(`t statistic`, &quot;\n(&quot;, FDR, &quot;)&quot;, sep = &quot;&quot;),
+        gs_name = str_remove_all(gs_name, &quot;kegg.&quot;), 
+        Type = ifelse(
+            str_detect(Comparison, &quot;IDC&quot;), &quot;IDC-like&quot;, &quot;ILC-like&quot;
+        )
+    ) %&gt;%
+    ggplot(aes(Comparison, 
+               factor(gs_name, levels = rowO$labels[rowO$order]))) +
+    geom_tile(aes(fill = `t statistic`)) +
+    geom_text(data = . %&gt;% dplyr::filter(Sig), 
+              aes(label = label), size = 3, color = &quot;black&quot;) +
+    scale_fill_distiller(palette = &quot;RdBu&quot;, 
+                         limit = c(-5,5),
+                         name = &quot;T-statistic&quot;) +
+    facet_grid(~Type, scales = &quot;free&quot;, space =  &quot;free&quot;) +
+    theme(
+        axis.title=element_blank(),
+        panel.grid = element_blank(),
+        # axis.ticks = element_blank(),
+        strip.text = element_text(size=14),
+        legend.key.size = unit(3, &#39;mm&#39;)
+    ) +
+    panel_border(remove = TRUE) </code></pre>
+<div class="figure" style="text-align: center">
+<img src="figure/sSNAPPY.Rmd/hp_tumor-1.png" alt="*Pathways that were significantly perturbed in at least one treatment &amp; tissue type among tumor sample*" width="960" />
+<p class="caption">
+<em>Pathways that were significantly perturbed in at least one treatment
+&amp; tissue type among tumor sample</em>
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="de-incorporate-diagnosis" class="section level1">
+<h1>DE incorporate diagnosis</h1>
+<p>We also re-performed the DE analysis with the predicted tumour
+subtypes incorporated.</p>
+<pre class="r"><code>dge_tumor$samples &lt;- dge_tumor$samples %&gt;%
+    mutate(
+        Diagnosis = as.character(Diagnosis),
+        Diagnosis = ifelse(
+            patient == &quot;Tumor-8&quot;, &quot;IDC-like&quot;,
+            Diagnosis
+        ),
+        Diagnosis = ifelse(
+            str_detect(Diagnosis, &quot;invasive&quot;),
+            &quot;ILC-like&quot;, &quot;IDC-like&quot;),
+        group = paste(treat, Diagnosis, sep = &quot;_&quot;)
+    )</code></pre>
+<pre class="r"><code>alpha &lt;- 0.05
+DE_byDiagnosis &lt;- sapply(c(&quot;ILC-like&quot;, &quot;IDC-like&quot;), function(x){
+    sample &lt;- dge_tumor$samples %&gt;%
+        dplyr::filter(Diagnosis == x) %&gt;%
+        pull(name)
+    dge_sub &lt;- dge_tumor %&gt;%
+        .[,colnames(.) %in% sample]
+    X &lt;- model.matrix(~ 0 + patient + treat ,
+                      data = dge_sub$samples
+    ) %&gt;%
+        set_colnames(str_remove_all(colnames(.), &quot;treat&quot;)) %&gt;%
+        .[,colSums(.) != 0]
+    dge_sub &lt;- estimateDisp(dge_sub, design = X, robust = TRUE)
+    fit &lt;- glmQLFit(dge_sub)
+    sapply(c(&quot;DHT&quot;, &quot;E2&quot;, &quot;E2+DHT&quot;), function(y){
+        glmQLFTest(fit, coef = y) %&gt;%
+            topTags(n = Inf) %&gt;%
+            .[[&quot;table&quot;]] %&gt;%
+            as_tibble() %&gt;%
+            mutate(
+                location = paste0(seqnames, &quot;:&quot;, start, &quot;-&quot;, end, &quot;:&quot;, strand),
+                rankingStat = -sign(logFC)*log10(PValue),
+                signedRank = rank(rankingStat),
+                DE = FDR &lt; alpha,
+                treatment = y,
+                Diagnosis = x
+            ) %&gt;%
+            dplyr::select(
+                gene_id, gene_name, logCPM, logFC, PValue, FDR,
+                location, gene_biotype, entrezid, ave_tx_len, gc_content,
+                rankingStat, signedRank, DE, treatment, Diagnosis
+            )
+    }, simplify = FALSE) %&gt;%
+        bind_rows()
+}, simplify = FALSE) </code></pre>
+<p>But we were still unable to detect any gene passing the statistical
+threshold of FDR &lt; 0.05 in any treatment group.</p>
+<pre class="r"><code>lapply(DE_byDiagnosis, dplyr::filter, DE)</code></pre>
+<pre><code>$`ILC-like`
+# A tibble: 0 × 16
+# ℹ 16 variables: gene_id &lt;chr&gt;, gene_name &lt;chr&gt;, logCPM &lt;dbl&gt;, logFC &lt;dbl&gt;,
+#   PValue &lt;dbl&gt;, FDR &lt;dbl&gt;, location &lt;chr&gt;, gene_biotype &lt;chr&gt;,
+#   entrezid &lt;I&lt;list&gt;&gt;, ave_tx_len &lt;dbl&gt;, gc_content &lt;dbl&gt;, rankingStat &lt;dbl&gt;,
+#   signedRank &lt;dbl&gt;, DE &lt;lgl&gt;, treatment &lt;chr&gt;, Diagnosis &lt;chr&gt;
+
+$`IDC-like`
+# A tibble: 0 × 16
+# ℹ 16 variables: gene_id &lt;chr&gt;, gene_name &lt;chr&gt;, logCPM &lt;dbl&gt;, logFC &lt;dbl&gt;,
+#   PValue &lt;dbl&gt;, FDR &lt;dbl&gt;, location &lt;chr&gt;, gene_biotype &lt;chr&gt;,
+#   entrezid &lt;I&lt;list&gt;&gt;, ave_tx_len &lt;dbl&gt;, gc_content &lt;dbl&gt;, rankingStat &lt;dbl&gt;,
+#   signedRank &lt;dbl&gt;, DE &lt;lgl&gt;, treatment &lt;chr&gt;, Diagnosis &lt;chr&gt;</code></pre>
+</div>
+<div id="thesis-figure" class="section level1">
+<h1>Thesis figure</h1>
+<p>Code used to generate figures for the thesis.</p>
+<!-- ```{r fig.width=24} -->
+<!-- gs2plot <- treat_sig_tumor %>% -->
+<!--     # dplyr::filter(str_detect(Comparison, "infiltrating|invasive")) %>% -->
+<!--     dplyr::filter(FDR < 0.05) %>% -->
+<!--     # group_by(gs_name) %>% -->
+<!--     # dplyr::filter(n() > 1) %>% -->
+<!--     pull(gs_name) %>% -->
+<!--     unique() -->
+<!-- rowO <-  treat_sig_tumor %>% -->
+<!--     dplyr::filter(gs_name %in% gs2plot) %>% -->
+<!--     mutate( -->
+<!--         gs_name = str_remove_all(gs_name, "kegg."), -->
+<!--          # gs_name = str_wrap(gs_name, 25) -->
+<!--         ) %>% -->
+<!--     dplyr::select(-c("FDR", "P-value")) %>% -->
+<!--     pivot_wider(names_from = Comparison, values_from = `t statistic`) %>% -->
+<!--     replace(is.na(.),0) %>% -->
+<!--     column_to_rownames("gs_name") %>% -->
+<!--     dist() %>% -->
+<!--     hclust()  -->
+<!-- library(ggh4x) -->
+<!-- strips <- strip_themed( -->
+<!--     background_x = elem_list_rect( -->
+<!--         fill = adjustcolor(new_diag_col, alpha.f = 0.5) -->
+<!--     ) -->
+<!-- ) -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- ssnappy_b <- treat_sig_tumor %>% -->
+<!--     dplyr::filter(gs_name %in% gs2plot)  %>% -->
+<!--     mutate( -->
+<!--         `t statistic` = round(`t statistic`, 2), -->
+<!--         Type = ifelse(str_detect(Comparison, "infiltrating"), "IDC-like", "ILC-like"), -->
+<!--         Comparison  = str_remove_all(Comparison, "_infiltrating|_invasive"), -->
+<!--         Comparison = factor(Comparison, levels = c("DHT", "E2+DHT", "E2")), -->
+<!--         label = case_when( -->
+<!--             FDR > 0.05 ~ "",  -->
+<!--             FDR < 0.05 ~ "*",  -->
+<!--             FDR < 0.005 ~ "**"), -->
+<!--         gs_name = str_remove_all(gs_name, "kegg."), -->
+<!--         # gs_name = str_wrap(gs_name, 25) -->
+<!--     ) %>% -->
+<!--     ggplot( -->
+<!--         aes( -->
+<!--             Comparison,  -->
+<!--             factor(gs_name, levels = rowO$labels[rowO$order]), -->
+<!--         )) + -->
+<!--     geom_tile(aes(fill = `t statistic`)) + -->
+<!--     geom_text(aes(label = label), size = 8, color = "black") + -->
+<!--     scale_fill_distiller(palette = "RdBu",  -->
+<!--                          limit = c(-5.1,5.1), -->
+<!--                          name = "t-statistic") + -->
+<!--     facet_wrap2(~Type, scales = "fixed",  -->
+<!--                 strip = strips  -->
+<!--     ) + -->
+<!--     theme( -->
+<!--         axis.title=element_blank(), -->
+<!--         panel.grid = element_blank(), -->
+<!--         text = element_text(size = 18), -->
+<!--         plot.margin = unit(rep(0, 4), "mm"), -->
+<!--         strip.text = element_text(size=24), -->
+<!--         # legend.key.size = unit(12, 'mm') -->
+<!--     ) + -->
+<!--     coord_fixed(0.4) -->
+<!-- # png( -->
+<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/ssnappy.png", -->
+<!-- #     width = 300, height =200, units='mm', res = 300 -->
+<!-- # ) -->
+<!-- # ssnappy_b -->
+<!-- # dev.off() -->
+<!-- ``` -->
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.3.0 (2023-04-21)
+Platform: x86_64-apple-darwin20 (64-bit)
+Running under: macOS Ventura 13.3.1
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Australia/Adelaide
+tzcode source: internal
+
+attached base packages:
+ [1] parallel  splines   stats4    stats     graphics  grDevices utils    
+ [8] datasets  methods   base     
+
+other attached packages:
+ [1] fgsea_1.26.0            concaveman_1.1.0        ggnewscale_0.4.9       
+ [4] ggforce_0.4.1           plotly_4.10.2           edgeR_3.42.4           
+ [7] limma_3.56.2            ggplotify_0.1.1         pheatmap_1.0.12        
+[10] glue_1.6.2              UpSetR_1.4.0            msigdbr_7.5.1          
+[13] RColorBrewer_1.1-3      htmltools_0.5.5         scatterpie_0.2.1       
+[16] corrplot_0.92           reactable_0.4.4         lmerTest_3.1-3         
+[19] colorspace_2.1-0        lme4_1.1-34             Matrix_1.6-0           
+[22] org.Hs.eg.db_3.17.0     xml2_1.3.5              ggfortify_0.4.16       
+[25] rvest_1.0.3             multcomp_1.4-25         TH.data_1.1-2          
+[28] MASS_7.3-60             survival_3.5-5          mvtnorm_1.2-2          
+[31] DT_0.28                 cqn_1.46.0              quantreg_5.95          
+[34] SparseM_1.81            preprocessCore_1.62.1   nor1mix_1.3-0          
+[37] mclust_6.0.0            sSNAPPY_1.5.1           magrittr_2.0.3         
+[40] cowplot_1.1.1           ensembldb_2.24.0        AnnotationFilter_1.24.0
+[43] GenomicFeatures_1.52.1  AnnotationDbi_1.62.2    Biobase_2.60.0         
+[46] GenomicRanges_1.52.0    GenomeInfoDb_1.36.1     IRanges_2.34.1         
+[49] S4Vectors_0.38.1        igraph_1.5.0            ggraph_2.1.0           
+[52] AnnotationHub_3.8.0     BiocFileCache_2.8.0     dbplyr_2.3.3           
+[55] BiocGenerics_0.46.0     pander_0.6.5            scales_1.2.1           
+[58] yaml_2.3.7              lubridate_1.9.2         forcats_1.0.0          
+[61] stringr_1.5.0           dplyr_1.1.2             purrr_1.0.1            
+[64] readr_2.1.4             tidyr_1.3.0             tibble_3.2.1           
+[67] ggplot2_3.4.2           tidyverse_2.0.0        
+
+loaded via a namespace (and not attached):
+  [1] later_1.3.1                   BiocIO_1.10.0                
+  [3] bitops_1.0-7                  filelock_1.0.2               
+  [5] polyclip_1.10-4               graph_1.78.0                 
+  [7] XML_3.99-0.14                 lifecycle_1.0.3              
+  [9] rprojroot_2.0.3               vroom_1.6.3                  
+ [11] lattice_0.21-8                crosstalk_1.2.0              
+ [13] sass_0.4.6                    rmarkdown_2.23               
+ [15] jquerylib_0.1.4               httpuv_1.6.11                
+ [17] minqa_1.2.5                   DBI_1.1.3                    
+ [19] zlibbioc_1.46.0               RCurl_1.98-1.12              
+ [21] yulab.utils_0.0.6             tweenr_2.0.2                 
+ [23] rappdirs_0.3.3                sandwich_3.0-2               
+ [25] git2r_0.32.0                  GenomeInfoDbData_1.2.10      
+ [27] ggrepel_0.9.3                 MatrixModels_0.5-2           
+ [29] codetools_0.2-19              DelayedArray_0.26.6          
+ [31] tidyselect_1.2.0              farver_2.1.1                 
+ [33] viridis_0.6.4                 matrixStats_1.0.0            
+ [35] GenomicAlignments_1.36.0      jsonlite_1.8.7               
+ [37] ellipsis_0.3.2                tidygraph_1.2.3              
+ [39] tools_4.3.0                   progress_1.2.2               
+ [41] Rcpp_1.0.11                   gridExtra_2.3                
+ [43] here_1.0.1                    xfun_0.39                    
+ [45] MatrixGenerics_1.12.2         numDeriv_2016.8-1.1          
+ [47] withr_2.5.0                   BiocManager_1.30.21          
+ [49] fastmap_1.1.1                 boot_1.3-28.1                
+ [51] fansi_1.0.4                   digest_0.6.33                
+ [53] gridGraphics_0.5-1            timechange_0.2.0             
+ [55] R6_2.5.1                      mime_0.12                    
+ [57] gtools_3.9.4                  biomaRt_2.56.1               
+ [59] RSQLite_2.3.1                 utf8_1.2.3                   
+ [61] generics_0.1.3                data.table_1.14.8            
+ [63] rtracklayer_1.60.0            prettyunits_1.1.1            
+ [65] graphlayouts_1.0.0            httr_1.4.6                   
+ [67] htmlwidgets_1.6.2             S4Arrays_1.0.4               
+ [69] graphite_1.46.0               pkgconfig_2.0.3              
+ [71] gtable_0.3.3                  blob_1.2.4                   
+ [73] workflowr_1.7.0               XVector_0.40.0               
+ [75] ProtGenerics_1.32.0           png_0.1-8                    
+ [77] ggfun_0.1.1                   knitr_1.43                   
+ [79] rstudioapi_0.15.0             tzdb_0.4.0                   
+ [81] reshape2_1.4.4                rjson_0.2.21                 
+ [83] nloptr_2.0.3                  nlme_3.1-162                 
+ [85] curl_5.0.1                    cachem_1.0.8                 
+ [87] zoo_1.8-12                    BiocVersion_3.17.1           
+ [89] restfulr_0.0.15               pillar_1.9.0                 
+ [91] grid_4.3.0                    vctrs_0.6.3                  
+ [93] promises_1.2.0.1              xtable_1.8-4                 
+ [95] evaluate_0.21                 cli_3.6.1                    
+ [97] locfit_1.5-9.8                compiler_4.3.0               
+ [99] Rsamtools_2.16.0              rlang_1.1.1                  
+[101] crayon_1.5.2                  labeling_0.4.2               
+[103] plyr_1.8.8                    fs_1.6.2                     
+[105] stringi_1.7.12                viridisLite_0.4.2            
+[107] BiocParallel_1.34.2           babelgene_22.9               
+[109] munsell_0.5.0                 Biostrings_2.68.1            
+[111] lazyeval_0.2.2                hms_1.1.3                    
+[113] bit64_4.0.5                   statmod_1.5.0                
+[115] KEGGREST_1.40.0               shiny_1.7.4.1                
+[117] highr_0.10                    SummarizedExperiment_1.30.2  
+[119] interactiveDisplayBase_1.38.0 memoise_2.0.1                
+[121] bslib_0.5.0                   fastmatch_1.1-3              
+[123] bit_4.0.5                    </code></pre>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

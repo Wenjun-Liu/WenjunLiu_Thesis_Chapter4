@@ -1,0 +1,2244 @@
+---
+title: "IDC_ILC"
+author: "Wenjun Liu<br>Dame Roma Mitchell Cancer Research Laboratories<br>Adelaide Medical School<br>University of Adelaide"
+date: "`r format(Sys.Date(), '%d %B, %Y')`"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    autodep = TRUE,
+	echo = TRUE,
+	warning = FALSE,
+	message = FALSE
+)
+```
+
+```{r packages}
+library(tidyverse)
+library(yaml)
+library(scales)
+library(pander)
+library(AnnotationHub)
+library(ggraph)
+library(igraph)
+library(ensembldb)
+library(cowplot)
+library(magrittr)
+library(sSNAPPY)
+library(cqn)
+library(DT)
+library(multcomp)
+library(rvest)
+library(ggfortify)
+library(xml2)
+library(org.Hs.eg.db)
+library(lme4)
+library(colorspace)
+library(lmerTest)
+library(reactable)
+library(corrplot)
+library(scatterpie)
+library(htmltools)
+library(RColorBrewer)
+library(msigdbr)
+library(UpSetR)
+library(glue)
+library(ggfortify)
+library(pheatmap)
+library(parallel)
+library(ggplotify)
+library(edgeR)
+library(plotly)
+library(ggforce)
+library(ggnewscale)
+library(concaveman)
+library(WGCNA)
+library(ggforce)
+library(ggrepel)
+# library(ISOpureR)
+library(mixOmics)
+library(ExperimentHub)
+library(singscore)
+library(grid)
+library(goseq)
+source(here::here("analysis/smallFunctions/make_gsNetwork.R"))
+```
+
+```{r options}
+panderOptions("table.split.table", Inf)
+panderOptions("big.mark", ",")
+theme_set(theme_bw())
+```
+
+```{r config}
+config <- here::here("config/config.yml") %>%
+  read_yaml()
+suffix <- paste0(config$tag)
+sp <- config$ref$species %>%
+  str_replace("(^[a-z])[a-z]*_([a-z]+)", "\\1\\2") %>%
+  str_to_title()
+```
+
+# Setup
+
+## Gene Annotations
+
+```{r ah}
+ah <- AnnotationHub() %>%
+  subset(rdataclass == "EnsDb") %>%
+  subset(str_detect(description, as.character(config$ref$release))) %>%
+  subset(genome == config$ref$build)
+stopifnot(length(ah) == 1)
+```
+
+```{r ensDb}
+ensDb <- ah[[1]]
+genesGR <- genes(ensDb)
+transGR <- transcripts(ensDb)
+```
+
+```{r addTxLen}
+mcols(transGR) <- mcols(transGR) %>%
+  cbind(
+    transcriptLengths(ensDb)[rownames(.), c("nexon", "tx_len")]
+  )
+```
+
+```{r addGcLen2Genes}
+mcols(genesGR) <- mcols(genesGR) %>%
+  as.data.frame() %>%
+  dplyr::select(
+    gene_id, gene_name, gene_biotype, entrezid
+  ) %>%
+  left_join(
+    mcols(transGR) %>%
+      as.data.frame() %>%
+      mutate(
+        tx_support_level = case_when(
+          is.na(tx_support_level) ~ 1L, 
+          TRUE ~ tx_support_level
+        )
+      ) %>%
+      group_by(gene_id) %>%
+      summarise(
+        n_tx = n(),
+        longest_tx = max(tx_len),
+        ave_tx_len = mean(tx_len),
+        gc_content = sum(tx_len*gc_content) / sum(tx_len)
+      ) %>%
+      mutate(
+        bin_length = cut(
+          x = ave_tx_len,
+          labels = seq_len(10),
+          breaks = quantile(ave_tx_len, probs = seq(0, 1, length.out = 11)),
+          include.lowest = TRUE
+        ),
+        bin_gc = cut(
+          x = gc_content,
+          labels = seq_len(10),
+          breaks = quantile(gc_content, probs = seq(0, 1, length.out = 11)),
+          include.lowest = TRUE
+        ),
+        bin = paste(bin_gc, bin_length, sep = "_")
+      ),
+    by = "gene_id"
+  ) %>%
+  set_rownames(.$gene_id) %>%
+  as("DataFrame")
+```
+
+
+
+## Sample metadata and merged counts
+
+Sample metadata and merged counts for tumour samples were read in and filtered as in the [dge analysis](dge_analysis.html). A `DGElist` was formed and `cqn` was applied for biases introduced by systematic artefacts.
+
+```{r init_cellType}
+init_cellType <- read_delim(here::here("config/sample_meta.txt"), delim = "\t")
+init_cellType <- init_cellType %>%
+    mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex("Stroma", ignore_case = T)), TRUE, FALSE), 
+           Epithelial = ifelse(str_detect(Dominant_cell_type, regex("Epithelial", ignore_case = T)), TRUE, FALSE), 
+           Ducts = ifelse(str_detect(Dominant_cell_type, regex("ducts", ignore_case = T)), TRUE, FALSE), 
+           Fat = ifelse(str_detect(Dominant_cell_type, regex("fat", ignore_case = T)), TRUE, FALSE), 
+           patient = str_replace(patient, "TH", "TH-")) %>%
+    pivot_longer(c("Stroma", "Epithelial", "Ducts", "Fat"),
+                 names_to = "cell_type", 
+                 values_to = "TF") %>%
+    mutate(cell_type = ifelse(TF, cell_type, NA)) %>%
+    dplyr::select(-c("TF", "Dominant_cell_type")) %>%
+    .[!is.na(.$cell_type),] %>%
+    chop("cell_type") %>%
+    mutate(cell_type = vapply(.$cell_type, function(x){
+        paste(x,collapse = ";")
+    }, character(1)))
+    
+```
+
+```{r samples}
+samples <- config$samples %>%
+  here::here() %>%
+  read_tsv() %>%
+    left_join(init_cellType) %>%
+  mutate(
+    Filename = paste0(sample, ".r_1"), 
+    condition = ifelse(Tumor, 
+                       paste("Tumor", treat, sep = "_"), 
+                       paste("Normal", treat, sep = "_")), 
+    patient = vapply(.$patient, function(x){str_split(x, "-")[[1]][2]}, character(1)), 
+    patient = ifelse(Tumor, 
+                       paste("Tumor", patient, sep = "-"), 
+                       paste("Normal",patient, sep = "-")), 
+    desc = paste(patient, treat, sep = " ")
+  ) %>%
+  dplyr::select(-c("name", "sample")) %>%
+  dplyr::rename(name = desc) %>%
+  mutate_if(
+    function(x){length(unique(x)) < length(x)},
+    as.factor
+  ) %>%
+  mutate(
+    treat = relevel(treat, ref = "Veh")
+  )
+```
+
+```{r mergedSamples}
+mergedSamples <- samples %>%
+  group_by(name, patient, treat, Tumor, cell_type, Tissue_type, Age, Diagnosis) %>%
+  tally()
+tumor_sample <- mergedSamples %>%
+  dplyr::filter(Tumor == TRUE) %>%
+    droplevels()
+diag_cols <- readRDS("~/GSE800098/output/diag_cols.rds")
+```
+
+```{r set_cols}
+treat_cols <- c(
+  Veh = rgb(0.7, 0.7, 0.7),
+  DHT = rgb(0.8, 0.2, 0.2),
+  E2 = rgb(0.2, 0.2, 0.8),
+  `E2+DHT` = rgb(1, 0.4, 1)
+)
+tumor_cols <- hcl.colors(
+  n = length(unique(samples$Tumor)), 
+  palette = "Zissou 1"
+  ) %>%
+  setNames(unique(samples$Tumor))
+patient_cols <- hcl.colors(
+  n = length(levels(tumor_sample$patient)), 
+  palette = "Spectral"
+  ) %>%
+  setNames(levels(tumor_sample$patient))
+```
+
+```{r treat_shapes}
+treat_shapes <- c(
+  Veh = 1,
+  DHT = 19,
+  E2 = 15,
+  `E2+DHT` = 17
+)
+```
+
+```{r counts}
+# counts <- here::here("data/aligned/counts/counts.out.gz") %>%
+#   gzfile() %>%
+#   read_tsv(comment = "#") %>%
+#   dplyr::select(Geneid, ends_with("bam")) %>%
+#   rename_at(vars(ends_with("bam")), dirname) %>%
+#   rename_all(basename) %>%
+#   column_to_rownames("Geneid")
+```
+
+```{r mergedCounts}
+# mergedCounts <- counts %>%
+#   rownames_to_column("gene_id") %>%
+#   pivot_longer(
+#     cols = -gene_id,
+#     names_to = "Filename",
+#     values_to = "counts"
+#   ) %>%
+#   left_join(samples, by = "Filename") %>%
+#   group_by(
+#     gene_id, name, patient, treat, Tumor) %>%
+#   summarise(counts = sum(counts), .groups = "drop") %>%
+#   pivot_wider(
+#     id_cols = gene_id,
+#     values_from = counts,
+#     names_from = name
+#   ) %>%
+#   column_to_rownames("gene_id")
+# saveRDS(mergedCounts, here::here("data/mergedCounts.rds"))
+mergedCounts <- readRDS(here::here("data/mergedCounts.rds"))
+```
+
+```{r rm_counts}
+rm(samples)
+gc()
+```
+
+```{r genes2Keep, results='hide'}
+minCPM <- 1.5
+minSamples_tumor <- 8
+genes2Keep_tumor <- mergedCounts[,colnames(mergedCounts) %in% tumor_sample$name] %>%
+  edgeR::cpm() %>%
+  is_greater_than(minCPM) %>%
+  rowSums() %>%
+  is_weakly_greater_than(minSamples_tumor)
+```
+
+```{r dge}
+dge_tumor <- readRDS(here::here("output/dge_tumor.rds"))
+```
+
+```{r cqn}
+cqNorma_tumor <- with(
+  dge_tumor,
+  cqn(
+    counts= counts,
+    x = genes$gc_content,
+    lengths = genes$ave_tx_len
+  )
+)
+dge_tumor$offset <- cqNorma_tumor$glm.offset
+logCPM_tumor <- cqNorma_tumor$y + cqNorma_tumor$offset
+```
+
+```{r pcaPost}
+pcaPost_tumor <- logCPM_tumor %>%
+  t() %>%
+  prcomp() 
+```
+
+
+```{r}
+tpm_func <- function(counts,len) {
+    x <- counts/len
+    return(t(t(x)*1e6/colSums(x)))
+}
+GeneLength <- genesGR %>%
+    as_tibble() %>%
+    dplyr::select(gene_name, ave_tx_len) 
+tumor_count <- mergedCounts[,colnames(mergedCounts) %in% tumor_sample$name]
+tumor_count <-tumor_count %>%
+    rownames_to_column("gene_id") %>%
+    left_join(
+        genesGR %>%
+            as.data.frame() %>%
+            dplyr::select(gene_id, gene_name)
+    ) %>%
+    .[!duplicated(.$gene_name),] %>%
+    dplyr::select(-gene_id)
+rownames(tumor_count) <- tumor_count$gene_name
+tumor_count <- tumor_count %>%
+    dplyr::select(-gene_name)
+```
+
+```{r}
+new_diag_col <- qualitative_hcl(2, palette = "Dark 3") %>%
+    set_names(c("IDC-like", "ILC-like"))
+# tumor_sample <- tumor_sample %>%
+#     mutate(
+#         Diagnosis = ifelse(
+#             str_detect(Diagnosis, "invasive"), "ILC-like", "IDC-like"
+#         )
+#     )
+```
+
+
+# Exppression of ILC marker genes
+
+By correlating the first three PCA components of all samples with corresponding clinical information, a strong confounding effect of pathological diagnosis was revealed.
+In the clinical records of tumours used in this study, tumours were either designated *invasive carcinoma of no special type* or *infiltrating carcinoma of no special type*, which pathologically is considered to be the same entity. 
+An independent pathological analysis of hematoxylin and eosin (H\&E) staining sections of representative uncultured tumour fragments confirmed they were ductal carcinomas with no distinguishing features, ruling out the possibility that some were lobular carcinomas which had been misclassified as ductal carcinomas. 
+However, the different labels indicated that subtle phenotypic distinctions between the two groups of tumours were observed by the pathologist, and it is known that clinically tumours of no special type often have mixed ductal and lobular features. 
+
+So we examined the expression of a few genes that are known to be distinct between IDC and ILC tumours. 
+
+```{r}
+geneOfInterest <- dge_tumor$genes %>%
+    dplyr::filter(gene_name %in% c("CDH1",  "FOXA1", "PTEN")) %>%
+    pull(gene_id)
+```
+
+The ILC  hallmarks that were identified in The Cancer Genome Atlas (TCGA) breast tumour RNA-seq dataset (lack of E-cadherin *CDH1*, loss of *PTEN* and elevated *FOXA1* expression) were also observed in our cohort of primary tumours that were labelled to be *invasive carcinoma of no special type*. 
+Therefore, we hypothesized that transcriptionally, the group of samples labelled as *invasive carcinoma of no special type* by the pathologist may be more "lobular-like" and the other group is more "ductal-like", whilst still being with the larger category of ductal carcinomas. 
+
+```{r, fig.height=5, fig.width=14, fig.cap="*Expressions of ILC marker genes in tumours that were labelled differently by the pathologist.*"}
+logCPM_tumor %>%
+    .[rownames(.) %in% geneOfInterest, ] %>%
+    # .[, str_detect(colnames(.), "Tumor-2", TRUE)] %>%
+    as.data.frame() %>%
+    rownames_to_column("gene_id") %>%
+    pivot_longer(
+        cols = -"gene_id", 
+        names_to = "name", 
+        values_to = "logCPM"
+    ) %>%
+    left_join(tumor_sample) %>%
+    left_join(dge_tumor$genes) %>%
+ 
+    ggplot(
+        aes(Diagnosis, logCPM, color = Diagnosis)
+    ) +
+    geom_boxplot() +
+    # ggpubr::stat_compare_means(method = "t.test",
+    #                    paired = FALSE,
+    #                    label.x = 1.5,
+    #                    label.y = 8.5,
+    #                    size = 4,
+    #                    aes(label = paste0("p-value = ", ..p.format..))
+    # ) +
+    geom_point() +
+    scale_color_manual(
+        values = set_names(new_diag_col, 
+                           c("infiltrating carcinoma of no special type", 
+                             "invasive carcinoma of no special type"))) +
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20)) +
+    geom_label_repel(
+        aes(label = name),
+        data = . %>%
+            dplyr::filter(patient == "Tumor-2", 
+                          gene_name == "CDH1"),
+        size = 3) +
+    facet_wrap(~gene_name)
+```
+
+# TCGA data
+
+In an attempt to further explore whether the two groups of PDE tumours can be distinguished by relative levels of ductal versus lobular features, a sparse partial least squares – discriminant analysis (sPLS-DA) classifier was trained and tested using mixOmics., using TCGA female primary breast tumour cohorts.
+
+Breast tumors TCGA data was retrieved from **GEO** GSE62944 using `ExperimentalHub()`
+```{r}
+eh = ExperimentHub()
+query(eh , "GSE62944")
+tcga_data <- eh[["EH1"]]
+breast_data <-  tcga_data[, which(phenoData(tcga_data)$CancerType=="BRCA")]
+breast_data <-  breast_data[, which(phenoData(breast_data)$gender =="FEMALE")]
+breast_data <-  breast_data[, which(phenoData(breast_data)$histological_type %in% c("Infiltrating Ductal Carcinoma", "Infiltrating Lobular Carcinoma"))]
+```
+
+## PCA
+
+```{r}
+proteinGene <- genesGR %>%
+    as.data.frame() %>%
+    # group_by(gene_name) %>%
+    # filter(n() == 1) %>%
+    # ungroup() %>%
+    dplyr::filter(gene_biotype == "protein_coding") %>%
+    pull(gene_name)
+breast_data <-  breast_data[ which(featureNames(breast_data)%in% proteinGene),]
+```
+
+PCA was firstly performed on all primary tumor tissues derived from female donors that were either IDC or ILC. To reduce running time, only the top 5k genes with the highest average counts were included. 
+
+```{r}
+top5000_bothGroup <- exprs(breast_data) %>%
+    rowMeans() %>%
+    sort(decreasing = TRUE) %>%
+    .[1:5000] %>%
+    names()
+bothGroup_pca <- breast_data[ which(featureNames(breast_data )%in% top5000_bothGroup),] %>%
+    exprs() %>%
+    t() %>%
+    prcomp() 
+ phenoData(breast_data)$histological_type <- ifelse(
+      str_detect(phenoData(breast_data)$histological_type, "Ductal"), 
+      "IDC", "ILC"
+ )
+```
+
+```{r, fig.height=6, fig.width=14, fig.cap="*PCA plots of all IDC and ILC samples. No clear separation between the two groups could be observed.*"}
+bothGroup_import <- percent(summary(bothGroup_pca)$importance["Proportion of Variance", ], 0.1) %>%
+    paste(names(.), ., sep = ": ")
+p1 <- bothGroup_pca$x[, 1:5] %>%
+    as.data.frame() %>%
+    rownames_to_column("sample") %>%
+    mutate(
+       Diagnosis = phenoData(breast_data)$histological_type) %>%
+    ggplot(
+        aes(PC1, PC2, color =Diagnosis)
+    ) +
+    geom_point() +
+    labs(
+        x = bothGroup_import[1], 
+        y = bothGroup_import[2]
+    ) +
+    scale_color_manual(values = diag_cols)
+p2 <-bothGroup_pca$x[, 1:5] %>%
+    as.data.frame() %>%
+    rownames_to_column("sample") %>%
+    mutate(
+       Diagnosis = phenoData(breast_data)$histological_type) %>%
+    ggplot(
+        aes(PC3, PC4, color =Diagnosis)
+    ) +
+    geom_point() +
+    labs(
+        x = bothGroup_import[3], 
+        y = bothGroup_import[4]
+    ) +
+    scale_color_manual(values = diag_cols)
+plot_grid(
+    plot_grid(
+    p1 + theme(legend.position = "none"),
+    p2 + theme(legend.position = "none"),
+    nrow = 1), 
+    get_legend(p1), 
+    nrow = 1, 
+    rel_widths = c(7.5,1))
+```
+
+
+
+```{r}
+IDC <- breast_data[ which(featureNames(breast_data) %in% rownames(tumor_count)), which(phenoData(breast_data)$histological_type == "IDC")]
+ILC <- breast_data[ which(featureNames(breast_data) %in% rownames(tumor_count)), which(phenoData(breast_data)$histological_type == "ILC")]
+```
+
+There were `r dim(exprs(IDC))[2]` IDC and `r dim(exprs(ILC))[2]` ILC samples in the dataset.50 IDCs and 50 ILCs were randomly sampled to form the training dataset while the remaining data formed the test dataset.
+
+```{r}
+set.seed(123)
+IDC_train_sample <- sample(phenoData(IDC)$bcr_patient_barcode, 50)
+IDC_train <- IDC[, which(phenoData(IDC)$bcr_patient_barcode %in% IDC_train_sample)]
+IDC_test <- IDC[, which(!phenoData(IDC)$bcr_patient_barcode %in% IDC_train_sample)]
+ILC_train_sample <- sample(phenoData(ILC)$bcr_patient_barcode, 50)
+ILC_train <- ILC[, which(phenoData(ILC)$bcr_patient_barcode %in% ILC_train_sample)]
+ILC_test <- ILC[, which(!phenoData(ILC)$bcr_patient_barcode %in% ILC_train_sample)]
+```
+
+
+# sPLS-DA
+
+## Normalise to z-score
+
+To make sure the expression data is comparable across different studies, they will all be converted to logCPM first before converting to z-scores. 
+
+```{r}
+combined_train <- cbind(exprs(IDC_train), exprs(ILC_train)[match(rownames(exprs(ILC_train)), rownames(exprs(IDC_train))), ]) %>%
+    .[!duplicated(rownames(.)), ] %>%
+     edgeR::cpm(log = TRUE)
+```
+
+```{r}
+combined_train_mean <- apply(combined_train, 1, mean)
+combined_train_sd <- apply(combined_train, 1, sd)
+combined_train <- sapply(rownames(combined_train), function(x){
+    (combined_train[x,] - combined_train_mean[x])/combined_train_sd[x]
+})
+```
+
+To start analysis, a basic MINT PLS-DA model was formed, in which all features were used to construct an arbitrarily chosen number of components.
+
+```{r}
+train_type <- rep(c("IDC", "ILC"), times = c(ncol(exprs(IDC_train)), ncol(exprs(ILC_train))))
+# train_study <- rep(c("tcga", "gse80098"), times = c((ncol(exprs(IDC_train)) + ncol(exprs(ILC_train)))))
+basic.plsda.model <- splsda(
+    X = combined_train, 
+    Y = train_type, 
+    ncomp = 10)
+
+```
+
+The number of components was set to 10 for the initial inspection. There is a large degree of overlap between ILC & IDC on the first two components. 
+
+```{r}
+plotIndiv(basic.plsda.model, comp = c(1,2), ellipse = TRUE,  ind.names = FALSE) 
+```
+
+and the 3rd and 4th components. 
+
+```{r}
+plotIndiv(basic.plsda.model, comp = c(3,4), ellipse = TRUE,  ind.names = FALSE) 
+```
+
+## Tune parameter
+
+`perf()` function was used to choose the optimal number of components.
+
+```{r}
+# set.seed(30)
+# Perf.plsda <- perf(basic.plsda.model, validation = "Mfold", folds = 3,
+#                    progressBar = FALSE, nrepeat = 50, cpus = 8)
+# saveRDS(Perf.plsda, here::here("output/Perf_plsda.rds"))
+Perf.plsda <- readRDS(here::here("output/Perf_plsda.rds"))
+matplot(Perf.plsda$error.rate$BER, type = 'l', lty = 1,
+        col = color.mixo(1:3),
+        main = 'Balanced Error rate')
+legend('topright',
+       c('max.dist', 'centroids.dist', 'mahalanobis.dist'),
+       lty = 1,
+       col = color.mixo(5:7))
+
+```
+
+Based on the graph above, `r Perf.plsda$choice.ncomp[1,1]` components gives the lowest balanced error rate. 
+
+`tune.splsda()` function was then used to tune the number of features for each component. The `ncomp` parameter was set to 6 because there can be disagreement between the optimal number of components chosen by the two functions. 
+
+
+```{r}
+# set.seed(30)
+# tune.splsda.srbct <- tune.splsda(
+#     X = combined_train,
+#     Y = train_type,
+#     ncomp = 6,
+#     validation = 'Mfold',
+#     folds = 3, dist = 'max.dist', progressBar = FALSE,
+#     measure = "BER", test.keepX = c(5:20,
+#                                      seq(20, 300, 5)
+#                                     ),
+#     nrepeat = 50,
+#     )
+# saveRDS(tune.splsda.srbct, here::here("output/tune_splsda_srbct.rds"))
+tune.splsda.srbct <- readRDS(here::here("output/tune_splsda_srbct.rds")) 
+```
+
+
+```{r}
+ncomp <- tune.splsda.srbct$choice.ncomp$ncomp # optimal number of components based on t-tests on the error rate
+select.keepX <- tune.splsda.srbct$choice.keepX[1:2] 
+```
+
+The optimal number of components decided by this method was `r ncomp`, and the numbers of features were `r select.keepX`. 
+
+The final model was plotted and there is now a better separation between the two groups on 1st component, but there is still a certain degree of overlap. 
+
+```{r}
+splsda.final <- splsda(
+    X = combined_train, 
+    Y = train_type,  
+    ncomp = ncomp, 
+    keepX = select.keepX 
+)
+plotIndiv(splsda.final, ind.names = FALSE, legend=TRUE,
+          ellipse = TRUE,  title="SPLS-DA, Final result", 
+          comp = c(1, 2))
+```
+
+The decision boundaries decided by this final model were visualised. New data will be projected on this prediction background. 
+
+```{r}
+background <- background.predict(splsda.final, comp.predicted=2,
+                                 dist = "max.dist") 
+plotIndiv(splsda.final, comp = 1:2, group = train_type,
+          ind.names = FALSE, title = "Maximum distance",
+          legend = TRUE,  background = background)
+```
+
+
+### Comp1 features
+
+Features selected for the 1st component were:
+
+```{r}
+plotLoadings(splsda.final, contrib = 'max', method = 'mean', comp = 1, 
+             legend.color = diag_cols[c("IDC", "ILC")])
+```
+
+```{r}
+comp1_gene <- splsda.final$loadings$X %>%
+    as.data.frame() %>% 
+    rownames_to_column("gene_name") %>%
+    dplyr::filter(comp1 != 0) %>%
+    pull(gene_name)
+combined_train_df <- t(combined_train) %>%
+    as.data.frame() %>%
+    rownames_to_column("gene_name") %>%
+    pivot_longer(
+        cols = -"gene_name",
+        names_to = "sample", 
+                 values_to = "normalised expression") %>%
+    left_join(
+        data.frame(
+            type = train_type, 
+            sample = rownames(combined_train))
+    )
+   
+```
+
+```{r}
+IDC_highGene <- combined_train_df %>%
+    dplyr　::filter(gene_name %in% comp1_gene) %>%
+    split(f = .$gene_name) %>%
+    lapply(group_by, type) %>%
+    lapply(summarize, median = median(`normalised expression`)) %>%
+    sapply(function(x){x[1,2] > x[2,2]}) %>%
+    enframe(
+        name = "gene_name", 
+        value = "high_in_IDC"
+    ) %>%
+    mutate(
+        color = ifelse(high_in_IDC, "firebrick", "midnightblue")
+    )
+    
+```
+
+### Comp2 features
+
+```{r}
+comp2_gene <- splsda.final$loadings$X %>%
+    as.data.frame() %>% 
+    rownames_to_column("gene_name") %>%
+    dplyr::filter(comp2 != 0) %>%
+    pull(gene_name)
+IDC_highGene_comp2 <- combined_train_df %>%
+    dplyr　::filter(gene_name %in% comp2_gene) %>%
+    split(f = .$gene_name) %>%
+    lapply(group_by, type) %>%
+    lapply(summarize,  median = median(`normalised expression`)) %>%
+    sapply(function(x){x[1,2] > x[2,2]}) %>%
+    enframe(
+        name = "gene_name", 
+        value = "high_in_IDC"
+    ) %>%
+    mutate(
+        color = ifelse(high_in_IDC, "firebrick", "midnightblue")
+    )
+```
+
+A total of `r length(comp2_gene)` component 2 features were selected by the classifier.
+
+### TF features selected 
+
+A vector of all known transciption factors was created by summarizing 6 TFT datasets: TRED, ITFP, ENCODE, Neph2012, TRRUST and Marbach2016. 
+
+```{r}
+# tftargets package summarizes 6 TFT datasets 
+# library(RCurl)
+# download.file(
+#   url = "https://raw.githubusercontent.com/slowkow/tftargets/master/data/tftargets.rda",
+#   destfile = here::here("data/tftargets.rda"),
+#   method = "curl"
+# )
+TFT_ls <- admisc::listRDA(here::here("data/tftargets.rda"))
+all_TF <- lapply(TFT_ls, names) %>%
+    Reduce(union, .) %>%
+    unique()
+```
+
+```{r}
+IDC_highGene_comp2_tf <- IDC_highGene_comp2 %>%
+    mutate(
+        TF = ifelse(gene_name %in% all_TF, TRUE, FALSE)
+    ) %>%
+    dplyr::filter(TF)
+```
+
+`r nrow(IDC_highGene_comp2_tf)` of the component 2 features were transcription factors:
+
+```{r}
+IDC_highGene_comp2_tf %>%
+    mutate(
+      `Group with Higher Expression` = ifelse(
+          high_in_IDC, "IDC", "ILC"
+      )
+    ) %>%
+    dplyr::select(
+        Gene = gene_name, 
+        `Group with Higher Expression`
+    ) %>%
+    mutate_all(as.factor) %>%
+    datatable(
+        filter = "top"
+    )
+```
+
+They are potentially implicated in mediating the transcriptional difference between the two tumour groups. 
+
+## Test model
+
+The fitted model was used to predict the diagnostic type of test data, which contained `r nrow(exprs(ILC_test))` and `r nrow(exprs(ILC_test))` samples.
+
+```{r}
+combined_test <- cbind(exprs(IDC_test), exprs(ILC_test)[match(rownames(exprs(ILC_test)), rownames(exprs(IDC_test))), ])  %>%
+    .[!duplicated(rownames(.)), ] %>%
+    edgeR::cpm(log = TRUE)
+combined_test_mean <- apply(combined_test, 1, mean)
+combined_test_sd <- apply(combined_test, 1, sd)
+combined_test <- sapply(rownames(combined_test), function(x){
+    (combined_test[x,] - combined_test_mean[x])/combined_test_sd[x]
+}) 
+```
+
+Condfusion matrix with the predicted labels and the true lables were: 
+
+```{r}
+test_type <- rep(c("IDC", "ILC"), times = c(ncol(exprs(IDC_test)), ncol(exprs(ILC_test))))
+splsda.test <- predict(splsda.final,
+                       combined_test, 
+                       dist = "all")
+# evaluate the prediction accuracy for the first two components
+test.comp1 <- splsda.test$class$centroids.dist[,1]
+table(factor(test.comp1, levels = unique(test_type)), test_type) 
+```
+
+The ROC curve of the testing was: 
+
+```{r}
+auroc(splsda.final, roc.comp = 2, print = FALSE)
+```
+
+```{r}
+# # save the prediction model as an RDS object
+# saveRDS(
+#     splsda.final, 
+#     file = here::here("output/splsda_model.rds")
+# )
+```
+
+## Prediction
+
+The trained and tested model was used to predict the subtype of all the vehicle PDEs. 
+
+```{r}
+cpm_tumor <-  tumor_count %>%
+    edgeR::cpm(log = TRUE) %>%
+     .[, str_detect(colnames(.), "Veh")] %>%
+    .[match(colnames(splsda.final$X), rownames(.)),]
+cpm_tumor_mean <- apply(cpm_tumor, 1, mean)
+cpm_tumor_sd <- apply(cpm_tumor, 1, sd)
+cpm_tumor <- sapply(rownames(cpm_tumor), function(x){
+    (cpm_tumor[x,] - cpm_tumor_mean[x])/cpm_tumor_sd[x]
+}) 
+```
+
+The prediction results were:
+
+```{r}
+splsda.final <- splsda(
+    X = combined_train, 
+    Y = train_type,  
+    ncomp = ncomp, 
+    keepX = c(19, 311) 
+)
+splsda.pred <- predict(splsda.final,
+                       cpm_tumor , 
+                       dist = "centroids.dist")
+splsda.pred$class$centroids.dist %>%
+    as.data.frame() %>%
+    rownames_to_column("name") %>%
+    left_join(dge_tumor$samples) %>%
+    mutate(
+        Diagnosis = ifelse(
+            str_detect(Diagnosis, "invasive"), "ILC-like", "IDC-like"
+        )
+    ) %>%
+    dplyr::select(patient, "comp2", 
+                  Diagnosis,  
+                  # Total_Epithelial
+                  ) %>%
+    unique() %>%
+    mutate(Alignment = ifelse(
+        (str_detect(Diagnosis, "ILC") & comp2 == "ILC" | 
+            str_detect(Diagnosis, "IDC") & comp2 == "IDC"), 
+        "\u2714 Yes", "\u2716 No"
+    )) %>%
+    dplyr::rename(
+        Patient = patient,
+        `Manual Prediction` = Diagnosis, 
+        `sPLS-DA Prediction` = comp2
+    ) %>%
+    mutate_all(as.factor) %>%
+    datatable(
+        filter = "top", 
+        height = 700,
+    ) %>%
+    formatStyle(
+        c( "sPLS-DA Prediction"),
+        color = styleEqual(c("ILC", "IDC"), c("#00AD9A", "#E16A86"))
+    ) %>%
+    formatStyle(
+        "Manual Prediction",
+        color = styleEqual(c("ILC-like", "IDC-like"), c("#00AD9A", "#E16A86"))
+    ) %>%
+    formatStyle(
+        'Alignment',
+            color = styleEqual(c( "\u2714 Yes", "\u2716 No"), c("#008000", "#e00000"))
+    )
+
+```
+
+The classifier's prediction results and the prediction based on the pathologist's label and marker gene expressions aligned for all but one sample Tumor-8. 
+
+```{r}
+pred_result <- splsda.pred$class$centroids.dist %>%
+    as.data.frame() %>%
+    rownames_to_column("name") %>%
+    left_join(dge_tumor$samples) %>%
+    mutate(Diagnosis = ifelse(
+        str_detect(Diagnosis, "invasive"), "ILC", "IDC"
+    )) %>%
+    dplyr::select(
+        patient, 
+        `sPLS-DA prediction` = "comp2", 
+        `Prediction by\nmarker genes` = Diagnosis) %>%
+    unique() %>%
+    mutate(align = ifelse(
+        `sPLS-DA prediction` == `Prediction by\nmarker genes`, 
+        TRUE, FALSE
+    )) %>%
+    pivot_longer(
+        cols = -c("patient", "align"), 
+        names_to = "Type", 
+        values_to = "Subtype"
+    ) 
+```
+
+When a PCA was performed on the 8 treatment-naive samples, tumour-8 was found to be more transcriptionally similar to the rest of samples that are labelled as *infiltrating carcinoma of no special type*.
+
+```{r, fig.height=5, fig.width=5, fig.cap="*PCA plot of only the untreated samples. The sample with disconcordant labels between the manual prediction and the ML classification is Tumour-8.*"}
+pcaPost_tumor_veh <- logCPM_tumor %>%
+    .[, str_detect(colnames(.), "Veh")] %>%
+    t() %>%
+    prcomp() 
+pcaPost_tumor_veh %>%
+    autoplot(
+        data = dge_tumor$samples %>%
+            dplyr::filter(treat == "Veh"), 
+        x = 1, y = 2,
+        colour = "Diagnosis", 
+        shape = "treat",
+        size = 5
+    ) +
+    scale_shape_manual(values = treat_shapes) +
+    guides(shape = FALSE) +
+    scale_color_manual(values = c(
+        "infiltrating carcinoma of no special type" = "#E16A86",
+            "invasive carcinoma of no special type" = "#00AD9A"
+    ), 
+    name = "Pathologist\nLabel") +
+    geom_label_repel(
+        data = . %>%
+            dplyr::filter(patient == "Tumor-8"),
+        aes(label = patient),
+        size = 4) +
+    labs(
+        colour = "Diagnosis",
+        shape = "Treatment", 
+        x = "PC1", 
+        y = "PC2"
+    ) +
+    theme(
+        legend.position = "none"
+    )
+```
+
+Based on the classifier results and the PCA plot, we classified 4 PDE tumours (Tumour-1, 4, 6, and 7 ) as lobular-like and 4 (Tumour-2, 3, 5, and 8) as ductal-like in subsequent analyses.
+
+```{r}
+tumor_sample <- tumor_sample %>%
+    dplyr::mutate(
+            Diagnosis = ifelse(
+                str_detect(Diagnosis, "invasive"), "ILC-like", "IDC-like"
+            ),
+            Diagnosis = ifelse(patient == "Tumor-8", "IDC-like", Diagnosis)
+    )
+```
+
+# Classifer validation using cell line data
+
+To further validate the sPLS-DA classifier, RNA-Seq expression profiling of 81 breast cancer cell lines (without replicates) were retrieved from project **SRP064259** using `recount3`.
+
+```{r, message=FALSE, echo=FALSE}
+library(recount3)
+library(SummarizedExperiment)
+public_CellLine <- recount3::create_rse_manual(
+    project = "SRP064259",
+    project_home = "data_sources/sra",
+    organism = "human",
+    annotation = "gencode_v26",
+    type = "gene"
+)
+#scale the counts using the AUC
+assays(public_CellLine)$counts <- recount3::transform_counts(public_CellLine)
+cell_meta <- colData(public_CellLine)
+cell_subtype <- read_delim(
+    here::here("data/cell_line_subtypes.txt")
+) %>%
+    mutate(cell_line = str_to_upper(cell_line))
+cell_meta <- cell_meta %>%
+    as.data.frame() %>%
+    dplyr::select(
+        sample = external_id,
+        cell_line = sra.sample_title
+    ) %>%
+    left_join(
+        cell_subtype
+    )
+# cell_meta %>%
+#     dplyr::filter(str_detect(cell_line, "HS578T|BT549|MDAMB231"))
+```
+
+The [original study](https://www.cell.com/cell/pdfExtended/S0092-8674(15)01624-4) didn't provide information about whether a cell line was a lobular or ductal line, but a full list of current ILC and ILC-like cell lines available were found n [*Atlas of Lobular Breast Cancer Models: Challenges and Strategic Directions*](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8582475/).
+
+Cell lines with known histology information that were used to validate the classifier were:
+
+```{r}
+cell_meta_his <- cell_meta %>%
+    # dplyr::filter(str_detect(cell_line, "MCF7"))
+    mutate(
+        Histology = case_when(
+            cell_line %in% c("MDAMB134VI", "SUM44", "MDAMB330") ~ "ILC",
+            cell_line %in% c("MDAMB453", "MDAMB468", "CAMA1", "SKBR3",
+                             "EVSAT", "CAL148", "ZR7530", "HCC2218", "600MPE",
+                             "BT549") ~ "ILC-like",
+            cell_line %in% c("MCF7", "T47D", "MDAMB231") ~ "IDC"
+        )
+    ) %>%
+    dplyr::filter(
+        !is.na(Histology)
+    )
+cell_meta_his %>%
+    dplyr::select(cell_line, Histology) %>%
+    mutate_all(as.factor) %>%
+    datatable(filter = "top")
+```
+
+
+## QC
+```{r}
+public_CellLine_count <- assays(public_CellLine)$counts %>%
+    .[, colnames(.) %in% cell_meta_his$sample]
+rownames(public_CellLine_count) <- vapply(rownames(public_CellLine_count), function(x){
+    str_split(x, "\\.")[[1]][1]
+}, character(1)) %>%
+    unname()
+minCPM <- 1.5
+minSamples <- 3
+genes2Keep <- public_CellLine_count  %>%
+  edgeR::cpm() %>%
+  is_greater_than(minCPM) %>%
+  rowSums() %>%
+  is_weakly_greater_than(minSamples)
+```
+
+The criteria for a gene to be considered as detected, $>$ `r minCPM` counts per million (CPM) were required to observed in $\geq$ `r minSamples` samples.
+
+Of the `r comma(nrow(public_CellLine_count))` genes contained in the annotation for this release, `r comma(sum(!genes2Keep))` genes were removed as failing this criteria for detection, leaving `r comma(sum(genes2Keep))` genes for downstream analysis.
+
+```{r plotDensities, fig.height=4, fig.cap="*Distributions of logCPM values on cell line raw counts, A) before and B) after filtering.*"}
+p1 <- public_CellLine_count %>%
+  edgeR::cpm(log = TRUE) %>%
+  as.data.frame() %>%
+  rownames_to_column("gene_id") %>%
+  as_tibble() %>%
+  pivot_longer(
+    cols = -"gene_id",
+    names_to = "sample",
+    values_to = "logCPM"
+  ) %>%
+  left_join(cell_meta_his) %>%
+  ggplot(aes(logCPM, stat(density), colour = Histology, linetype = Histology)) +
+  geom_density() +
+  scale_colour_manual(values= c(diag_cols[c("IDC", "ILC")], "ILC-like" = "darkgreen") ) +
+  labs(
+    y = "Density"
+  )
+p2 <- public_CellLine_count[genes2Keep,] %>%
+edgeR::cpm(log = TRUE) %>%
+  as.data.frame() %>%
+  rownames_to_column("gene_id") %>%
+  as_tibble() %>%
+  pivot_longer(
+    cols = -"gene_id",
+    names_to = "sample",
+    values_to = "logCPM"
+  ) %>%
+  left_join(cell_meta_his) %>%
+  ggplot(aes(logCPM, stat(density), colour = Histology, linetype = Histology)) +
+  geom_density() +
+  scale_colour_manual(values= c(diag_cols[c("IDC", "ILC")], "ILC-like" = "darkgreen") ) +
+  labs(
+    y = "Density"
+  )
+plot_grid(p1, p2)
+```
+A `DGEList` was created for those selected cell lines after filtration.
+
+```{r}
+dge_CellLine <- public_CellLine_count[genes2Keep,] %>%
+  DGEList(
+    samples = cell_meta_his %>%
+      as.data.frame() %>%
+      set_rownames(.$sample) %>%
+      .[colnames(public_CellLine_count),],
+    group = cell_meta_his %>%
+      as.data.frame() %>%
+      set_rownames(.$sample) %>%
+      .[colnames(public_CellLine_count),] %>%
+      pull(Histology),
+    genes = genesGR %>%
+        as.data.frame() %>%
+        .[rownames(public_CellLine_count[genes2Keep,] ),]
+  ) %>%
+  calcNormFactors()
+```
+
+```{r plotLibSizes, fig.height=6, fig.width = 16, fig.cap = "*Library sizes of all samples after removal of undetectable genes. The common-use minimum library size of 10 million reads is shown as a dashed line.*"}
+dge_CellLine$samples %>%
+    ggplot(aes(sample, lib.size, fill = Histology)) +
+    geom_col() +
+    geom_hline(yintercept = 1e7, linetype = 2) +
+    scale_y_continuous(
+        labels = comma, expand = expansion(c(0, 0.05))
+    ) +
+    scale_fill_manual(values=  c(diag_cols[c("IDC", "ILC")], "ILC-like" = "darkgreen")) +
+    labs(x = "Sample Name", y = "Library Size")  +
+    theme(legend.position = "top",
+          axis.text.x = element_text(angle = 45, vjust = 0.5))
+```
+
+Conditional quantile normalisation was performed, and the PCA was performed post-normalisation.
+
+```{r}
+dge_CellLine <- dge_CellLine[!is.na( dge_CellLine$genes$ave_tx_len), ]
+cqNorma_CellLine <-cqn(
+    counts=  dge_CellLine$counts,
+    x =  dge_CellLine$genes$gc_content,
+    lengths =  dge_CellLine$genes$ave_tx_len
+
+)
+dge_CellLine$offset <- cqNorma_CellLine$glm.offset
+logCPM_CellLine <- cqNorma_CellLine$y + cqNorma_CellLine$offset
+pcaPost_CellLine <- logCPM_CellLine %>%
+  t() %>%
+  prcomp()
+```
+
+The first PCA components were correlated with receptor subtype and histology subtype.
+
+```{r, fig.height=5, fig.width=5, fig.cap="*Correlatoins between the first PCA components among the 16 cell lines selected and receptor subtype and histology subtype.*"}
+pcaPost_CellLine$x %>%
+    as.data.frame() %>%
+    rownames_to_column("sample") %>%
+    left_join(cell_meta_his) %>%
+    dplyr::select(PC1, PC2, PC3, PC4, PC5, `Receptor subtype` = subtype_three_receptor, Histology) %>%
+    mutate_if(is.character, as.factor) %>%
+    mutate_if(is.factor, as.numeric) %>%
+    cor() %>%
+    corrplot(
+        type = "lower",
+        diag = FALSE,
+        addCoef.col = "black",
+        addCoefasPercent = TRUE
+    )
+```
+
+
+```{r, fig.width=16, fig.height=8, fig.cap="*PCA plots of the 16 selected cell lines, colored by (A) receptor subtypes, and (B) histology subtypes. The PC1 direction was driven by receptor subtype while the PC2 direction was more driven by histologfy subtypes*"}
+p1 <- pcaPost_CellLine %>%
+    autoplot(
+        data = cell_meta_his,
+        x = 1, y = 2,
+        color = "subtype_three_receptor",
+        shape = "subtype_three_receptor",
+        size = 4
+    )
+p2 <- pcaPost_CellLine %>%
+    autoplot(
+        data = cell_meta_his,
+        x = 2, y = 3,
+        color = "Histology",
+        shape = "subtype_three_receptor",
+        size = 4
+    ) +
+    scale_color_manual(values=  c(diag_cols[c("IDC", "ILC")], "ILC-like" = "darkgreen"))
+plot_grid(p1, p2,
+          labels = LETTERS[1:2])
+```
+
+## Filtration
+
+```{r}
+cell_meta_his <- cell_meta_his %>%
+    dplyr::filter(subtype_three_receptor == "ER")
+dge_CellLine <- dge_CellLine[, dge_CellLine$samples$sample %in% cell_meta_his$sample]
+logCPM_CellLine <- dge_CellLine$counts %>%
+    cpm(log =TRUE)
+pcaPost_CellLine <- logCPM_CellLine %>%
+  t() %>%
+  prcomp()
+```
+
+To simplify the analysis,only ER-positive cell lines were kept, leaving the following cell lines in the analysis:
+
+```{r}
+cell_meta_his %>%
+    dplyr::select(cell_line, Histology) %>%
+    chop("cell_line") %>%
+    mutate(
+        cell_line = vapply(.$cell_line, function(x)paste(x, collapse = "; "),
+                           character(1))
+    ) %>%
+    pander(
+    )
+```
+
+
+```{r, fig.width=16, fig.height=8, fig.cap="*PCA plots of the 7 selected cell lines on (A) PC1 & PC2 directions, and (B) PC3 & PC4 direction. The 2 ILC-like cell lines CAMA1 and 600MPE seem to be closer to IDC cell lines on the PC2 direction, while the other ILC-like cell line EVSAT was an outlier on both PC1 and PC4 directions. *"}
+p1 <- pcaPost_CellLine %>%
+    autoplot(
+        data = cell_meta_his,
+        x = 1, y = 2,
+        color = "Histology",
+        size = 4
+    ) +
+    geom_label_repel(
+        aes(label = cell_line)
+    ) +
+    scale_color_manual(values=  c(diag_cols[c("IDC", "ILC")], "ILC-like" = "darkgreen"))
+p2 <- pcaPost_CellLine %>%
+    autoplot(
+        data = cell_meta_his,
+        x = 3, y = 4,
+        color = "Histology",
+        size = 4
+    ) +
+    geom_label_repel(
+        aes(label = cell_line)
+    ) +
+    scale_color_manual(values=  c(diag_cols[c("IDC", "ILC")], "ILC-like" = "darkgreen"))
+plot_grid(p1, p2,
+          labels = LETTERS[1:2])
+```
+
+## Marker Expression
+
+The expressions of lobular hallmark CDH1 werevisualised as a boxplot. As expected, expressions were the highest in the IDC cell lines and lowest in the ILC cell lines. It's interesting to observe that the ILC-like model EVSAT had CDH1 expression that were as high as the median of the two IDC lines.
+
+```{r, fig.height=4, fig.width=5, fig.cap="*LogCPM expressions of ILC marker CDH1 in the 7 cell lines, colored by histology subtypes.*"}
+cdh1_cell <- logCPM_CellLine %>%
+    as.data.frame() %>%
+    rownames_to_column("gene_id") %>%
+    pivot_longer(
+        cols = -"gene_id",
+        names_to = "sample",
+        values_to = "logCPM"
+    ) %>%
+    left_join(cell_meta_his) %>%
+    left_join(dge_CellLine$genes) %>%
+    dplyr::filter(gene_name %in% c("CDH1")) %>%
+    ggplot(
+        aes(Histology, logCPM, color = Histology)
+    ) +
+    geom_boxplot() +
+    scale_color_manual(
+        values = c(diag_cols[c("IDC", "ILC")], "ILC-like" = "darkgreen")) +
+    theme(
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()
+    )+
+    xlab("") +
+    geom_point(aes(fill = Histology)) +
+    # facet_wrap(~gene_name) +
+    geom_label_repel(
+        data = . %>%
+            dplyr::filter(
+                Histology == "ILC-like", 
+                gene_name %in% c("CDH1", "PTEN")), 
+        aes(label = cell_line)
+    ) +
+    ggtitle("CDH1 expression")
+cdh1_cell
+```
+
+
+## sPLS-DA prediction
+
+To apply the sPLS-DA for prediction, the logCPM matrix was normalised to z-scores.
+
+```{r}
+logCPM_CellLine2 <- logCPM_CellLine
+rownames(logCPM_CellLine2) <- unname(mapIds(ensDb, rownames(logCPM_CellLine2), "GENENAME", keytype = "GENEID" ))
+logCPM_CellLine2 <- logCPM_CellLine2 %>%
+    .[match(colnames(splsda.final$X), rownames(.)),]
+logCPM_CellLine2 <- logCPM_CellLine2[!is.na(rownames(logCPM_CellLine2)),]
+missingGene <- setdiff(colnames(splsda.final$X), rownames(logCPM_CellLine2))
+temp <- matrix(0, ncol = ncol(logCPM_CellLine2), nrow = length(missingGene))
+rownames(temp) <- missingGene
+logCPM_CellLine2 <- rbind(logCPM_CellLine2, temp)
+cpm_mean_CellLine <- apply(logCPM_CellLine2, 1, mean)
+cpm_sd_CellLine <- apply(logCPM_CellLine2, 1, sd)
+cpm_scaled_CellLine <- sapply(rownames(logCPM_CellLine2), function(x){
+    (logCPM_CellLine2[x,] - cpm_mean_CellLine[x])/cpm_sd_CellLine[x]
+})
+```
+
+Prediction results of the 7 cell lines were:
+
+```{r}
+splsda.pred_CellLine <- predict(splsda.final,
+                                cpm_scaled_CellLine %>%
+                                    .[,match(colnames(splsda.final$X), colnames(.))],
+                                dist = "all")
+splsda.pred_CellLine$class$mahalanobis.dist %>%
+    as.data.frame() %>%
+    rownames_to_column("sample") %>%
+    left_join(cell_meta_his) %>%
+    dplyr::select(cell_line, 
+                  `sPLS-DA prediction` = "comp2", 
+                  Histology) %>%
+    unique() %>%
+    mutate(
+        Alignment = if_else(
+          Histology == "ILC-like" & `sPLS-DA prediction` == "IDC", "\u2716 No",  "\u2714 Yes", )
+        ) %>%
+    mutate_all(as.factor) %>%
+    datatable(
+        filter = "top",
+        height = 700,
+    ) %>%
+    formatStyle(
+        c( "sPLS-DA prediction"),
+        color = styleEqual(c("ILC", "IDC"), c("#00AD9A", "#E16A86"))
+    ) %>%
+    formatStyle(
+        "Histology",
+        color = styleEqual(names(c(diag_cols[c("IDC", "ILC")], "ILC-like" = "darkgreen")), c(diag_cols[c("IDC", "ILC")], "ILC-like" = "darkgreen"))
+    ) %>%
+    formatStyle(
+        'Alignment',
+            color = styleEqual(c( "\u2714 Yes", "\u2716 No"), c("#008000", "#e00000"))
+    )
+```
+
+All the ILC and IDC models were classified corrrectly by the classifier, while only one of the three ILC-like line EVSAT, which was already identified as an outlier in the PCA plots, was predicted to be IDC. 
+
+
+# Score ILC gene signatures{.tabset}
+
+In [*Comprehensive Phenotypic Characterization of Human Invasive Lobular Carcinoma Cell Lines in 2D and 3D Cultures*](https://pubmed.ncbi.nlm.nih.gov/30228172/), ILC vs IDC comparisons were carried out between cell ines and TCGA tumours. 14 consistent up and 17 consistent down signatures were found. The list of 31 sigantures were loaded in, and `singscore` was used to score those signatures in all untreated samples. 
+
+The signatures used here were:
+
+```{r}
+ILC_sig <- read_delim("~/20131906_HickeyT_JC_NormalBreast/data/ILC_signature.txt")
+ILC_sig %>%
+  dplyr::select(
+    `Gene name` = gene_name, 
+    `Type of sig` = type
+  ) %>%
+  mutate_all(as.factor) %>%
+  datatable(filter = "top")%>%
+  formatStyle(
+    'Type of sig',
+    color = styleEqual(c("ILC_high", "ILC_low"), c( "#e00000", "blue"))
+  )
+
+```
+ 
+Interestingly, among this list of 31 signatures, only CDH1 was also selected as a feature by the sPLS-DA. 
+
+```{r}
+# IDC_highGene %>%
+#     mutate(comp = "comp1") %>%
+#     rbind(
+#         IDC_highGene_comp2 %>%
+#             mutate(comp = "comp2")
+#     ) %>%
+#     dplyr::filter(gene_name %in% ILC_sig$gene_name)
+```
+
+```{r}
+ILC_sig_ls <- ILC_sig %>%
+  left_join(genesGR %>%
+              as.data.frame() %>%
+                dplyr::filter(gene_biotype == "protein_coding", 
+                              gene_id != "ENSG00000277445")) %>%
+    mutate(
+        gene_id = ifelse(gene_name == "HIST1H3H", "ENSG00000278828", gene_id)
+    ) %>%
+  drop_na() %>%
+  split(f = .$type) %>%
+  lapply(pull, gene_id)
+
+```
+
+To apply `singscore`, the raw counts for both the untreated PDEs and the cell lines were converted to `tpm` values to avoid the confounding effect of library sizes.
+
+```{r}
+GeneLength <- genesGR %>%
+    as_tibble() %>%
+    dplyr::select(gene_id, ave_tx_len) 
+veh_count <- mergedCounts %>%
+  .[,str_detect(colnames(.), "Veh")] %>%
+  .[,str_detect(colnames(.), "Tumor")]
+tpm_func <- function(counts,len) {
+    x <- counts/len
+    return(t(t(x)*1e6/colSums(x)))
+}
+tpm_veh <- tpm_func(veh_count, GeneLength %>%
+                        dplyr::filter(gene_id %in% rownames(veh_count)) %>%
+                        .[match(rownames(veh_count), .$gene_id),] %>% 
+                        pull(ave_tx_len))
+ranked_veh <- rankGenes(tpm_veh)
+cell_count <- - dge_CellLine$counts
+cell_count <- cell_count %>%
+    .[rownames(.) %in% GeneLength$gene_id,]
+tpm_cell <- tpm_func(cell_count, GeneLength %>%
+                        dplyr::filter(gene_id %in% rownames(cell_count)) %>%
+                        .[match(rownames(cell_count), .$gene_id),] %>% 
+                        pull(ave_tx_len))
+ranked_cell <- rankGenes(tpm_cell)
+```
+
+3 ILC-high signatures ENSG00000121807, ENSG00000168329, ENSG00000156298  were not detected in this cell line data.
+
+```{r}
+ILC_score_cell <- simpleScore(
+  ranked_cell, 
+  upSet = ILC_sig_ls$ILC_high, 
+  downSet = ILC_sig_ls$ILC_low
+  ) 
+ILC_score_veh <- simpleScore(
+  ranked_veh, 
+  upSet = ILC_sig_ls$ILC_high, 
+  downSet = ILC_sig_ls$ILC_low
+  ) 
+```
+
+## Cell lines 
+
+Clear differences in the total ILC scores between the three cell lines types were observed. 
+
+
+```{r}
+pred_result_cell <- splsda.pred_CellLine$class$mahalanobis.dist %>%
+    as.data.frame() %>%
+    rownames_to_column("sample") %>%
+    left_join(cell_meta_his) %>%
+    dplyr::select(cell_line,
+                  `sPLS-DA prediction` = "comp2",
+                  `Cell-line type` = Histology)  %>%
+    unique() %>%
+    mutate(
+        align = ifelse(
+            `sPLS-DA prediction` == `Cell-line type`,
+            TRUE, FALSE),
+        align = ifelse(
+            `Cell-line type`  == "ILC-like" & `sPLS-DA prediction` == "ILC",
+            TRUE, align
+        )) %>%
+    pivot_longer(
+        cols = -c("cell_line", "align"),
+        names_to = "Type",
+        values_to = "Subtype"
+    )
+
+```
+
+```{r fig.cap= "*ILC score derived by scoring a list of 31 ILC signatures against the gene ranks within each samples in the 7 cell line models. Clear differences between the three cell line types were observed.*"}
+ILC_cell_p <- ILC_score_cell %>%
+    rownames_to_column("sample") %>%
+    left_join(cell_meta_his) %>%
+    left_join(pred_result_cell) %>%
+    dplyr::filter(Type == "Cell-line type") %>%
+    ggplot(
+        aes(Subtype, TotalScore, color = Subtype )
+    ) +
+    geom_boxplot() +
+    scale_color_manual(values = c(diag_cols, "ILC-like" = "darkgreen"), 
+                       name = "subtype") +
+
+    labs(
+        x = "", 
+        y = "ILC scores") +
+    geom_point(aes(color = Subtype)) +
+    geom_label_repel(
+        data = . %>%
+            dplyr::filter(Subtype == "ILC-like"),
+        aes(label = cell_line),
+        size = 3
+    ) 
+```
+
+```{r, fig.cap= "*(A) CDH1 expressions and (B) ILC score derived by scoring a list of 31 ILC signatures against the gene ranks within each samples in the 7 cell line models. Clear differences between the three cell line types were observed.*"}
+plot_grid(
+    cdh1_cell +
+        theme(
+            legend.position = "none"
+        ), 
+    ILC_cell_p + ggtitle("ILC score"), 
+    rel_widths = c(0.8, 1), 
+    labels = LETTERS[1:2]
+)
+```
+
+## PDE
+
+It's interesting to observe that these marker genes could not separate the untreated PDEs like they could in the cell lines and Ellis AI data, indicating that those signatures might have less discriminatory power in tumours with a mixture of phenotypes.
+
+```{r, fig.height=5, fig.width=12, fig.cap= "*ILC score derived by scoring a list of 31 ILC signatures against the gene ranks within each samples in the 8 untreated PDE models. No clear difference was observed in any of the score type. *"}
+ILC_score_veh %>%
+    rownames_to_column("name") %>%
+    dplyr::select(-contains("Dispersion")) %>%
+    pivot_longer(
+        cols = -"name", 
+        names_to = "Score_type", 
+        values_to = "score"
+    ) %>%
+    left_join(tumor_sample %>%
+                  dplyr::select(name, patient, Diagnosis)) %>%
+    ggplot(
+        aes(Diagnosis, score, color = Diagnosis)
+    ) +
+    geom_boxplot() +
+    scale_color_manual(values = new_diag_col, 
+                       name = "Predicted Subtype") +
+    labs(
+        x = "", 
+        y = "ILC scores") +
+    geom_point(aes(color = Diagnosis)) +
+    facet_wrap(~Score_type
+               # , scale = "free_y"
+               )
+```
+
+
+# DE bewteen ILC vs IDC
+
+Since the predicted tumour subtype is a known strong confounding factor in this dataset and clear separation by this factor on the PCA plots was observed, a DE analysis was performed to compare the treatment-naive ILC-like tumours against the treatment-naive IDC-like ones.
+The tumour `DGEList` was subsetted to derive a vehicle-sample only `DGEList`.
+
+```{r}
+dge_tumor_veh <- dge_tumor %>%
+    .[,str_detect(colnames(.$counts), "Veh")]
+```
+
+```{r fit}
+X <- model.matrix(~  Diagnosis,
+                  data = dge_tumor_veh$samples %>%
+                      mutate(
+                          Diagnosis = as.character(Diagnosis), 
+                          Diagnosis = ifelse(
+                              patient == "Tumor-8", "IDC-like", 
+                              Diagnosis
+                          ),
+                          Diagnosis = as.factor(ifelse(
+                              str_detect(Diagnosis, "invasive"), 
+                              "ILC-like", "IDC-like"))
+                          )
+) %>%
+    set_colnames(str_remove_all(colnames(.), "Diagnosis")) %>%
+    .[,colSums(.) != 0]  
+dge_tumor_veh <- estimateDisp(dge_tumor_veh, design = X, robust = TRUE)
+fit <- glmQLFit(dge_tumor_veh)
+```
+
+None of the gene passed the statistical threshold of FDR < 0.05. 
+```{r topTables}
+alpha <- 0.05
+topTables_veh <- glmQLFTest(fit, coef = "ILC-like") %>%
+      topTags(n = Inf) %>%
+      .[["table"]] %>%
+      as_tibble() %>%
+      mutate(
+        location = paste0(seqnames, ":", start, "-", end, ":", strand),
+        rankingStat = -sign(logFC)*log10(PValue),
+        signedRank = rank(rankingStat),
+        DE = FDR < alpha
+      ) %>%
+      dplyr::select(
+        gene_id, gene_name, logCPM, logFC, PValue, FDR, 
+        location, gene_biotype, entrezid, ave_tx_len, gc_content,
+        rankingStat, signedRank, DE
+      )
+```
+
+## GSEA
+
+GSEA was performed on the ranking statistics derived from the DE analysis. 
+
+```{r}
+gene_ranks <- topTables_veh %>%
+  arrange(FDR) %>% 
+  distinct(gene_name, .keep_all = TRUE) %>% 
+  arrange(desc(rankingStat)) %>% 
+  with(
+    setNames(rankingStat, gene_name)
+  ) 
+```
+
+```{r}
+gsTopology <- retrieve_topology(database = "kegg", species = "hsapiens")
+gsTokeep <- readRDS(here::here("output/kg_gsTokeep.rds"))
+load(system.file("extdata", "entrez2name.rda", package = "sSNAPPY"))
+kg <- sapply(gsTopology, rownames) %>%
+    do.call(cbind, .) %>%
+    as.data.frame() %>%
+    pivot_longer(
+        cols = everything(),
+        names_to = "gs_name",
+        values_to = "entrezid"
+    ) %>%
+    dplyr::filter(gs_name %in% gsTokeep) %>%
+    left_join(
+        entrez2name %>%
+            dplyr::rename(gene_name = mapTo)
+    ) %>%
+    left_join(genesGR %>%
+                  as.data.frame() %>%
+                  dplyr::select(gene_name, gene_id)) %>%
+    unique() %>%
+    dplyr::select(-entrezid)
+kgByGS <- kg %>%
+    split(f = .$gs_name) %>%
+    lapply(pull, gene_name)
+```
+
+```{r}
+library(fgsea)
+gsea_res <- fgsea(kgByGS,gene_ranks, eps = 0)
+gsea_res_sig <- gsea_res %>%
+    dplyr::filter(padj < 0.05) %>%
+    arrange(NES) %>%
+    mutate(
+        pathway = str_remove_all(pathway, "kegg."), 
+        pathway = as.factor(pathway)
+    ) 
+gsea_res_sig$pathway <- factor(gsea_res_sig$pathway, levels = gsea_res_sig$pathway)
+```
+
+`r nrow(gsea_res_sig)` pathways were found to be significantly enriched (FDR < 0.05), out of which `r nrow(dplyr::filter(gsea_res_sig, NES > 0))` were enriched among genes with elevated expressions in ILC-like tumours and `r nrow(dplyr::filter(gsea_res_sig, NES < 0))` were enriched among genes with decreased expressions. 
+
+```{r, fig.width=8, fig.height=6, fig.cap="*KEGG pathays that were significantly enriched in ILC-like control PDEs, colored by the sign of normalised enrichment score.*"}
+gsea_res_sig %>%
+    mutate(
+        hjust = ifelse(NES > 0, 1.05, -0.05)
+    ) %>%
+    ggplot(
+        aes(pathway, 
+            NES, 
+            fill = NES, 
+        )) +
+    geom_bar(stat="identity", position="stack") +
+    scale_fill_distiller(palette = "RdBu", 
+                          limit = c(-2.5, 2.5),
+                          name = "NES") +
+    xlab("") +
+    geom_text(aes(label = pathway, y  = 0, hjust = hjust)) + 
+    coord_flip()  +
+    scale_x_discrete(
+                     breaks = NULL) +
+    theme(
+        panel.grid = element_blank(), 
+        axis.text.x = element_text(size = 12), 
+        axis.text.y = element_text(size = 12), 
+        panel.border = element_blank()
+    )
+```
+
+```{r}
+logCPM_tumor_df <- logCPM_tumor %>%
+    as.data.frame() %>%
+    rownames_to_column("gene_id") %>%
+    pivot_longer(
+        cols = -"gene_id", 
+        names_to = "name", 
+        values_to = "logCPM"
+    ) %>%
+    left_join(
+        tumor_sample
+    ) %>%
+    left_join(
+        dge_tumor$genes %>%
+            dplyr::select(gene_id, gene_name)
+    )
+```
+
+# Fu et al. ILC/IDC signature genes
+
+```{r}
+fu_sig <- read_csv(here::here("data/Fu_ILC_sig.csv")) %>%
+    .[, 1:2]
+# IDC_highGene %>%
+#     mutate(comp = "comp1") %>%
+#     rbind(
+#         IDC_highGene_comp2 %>%
+#             mutate(comp = "comp2")
+#     ) %>%
+#     dplyr::filter(gene_name %in% fu_sig$gene_name)
+```
+
+In the study by Fu et al. 2017, a set of genes capable of distinguishing ILC from IDC were selected by applying a shrunken centroid analysis to three public microarray dataset with clear histology subtype diagnoses. To refine the gene list, an elastic-net regularized linear modelling was used with a 10-fold cross validation step. The final list consists of `r nrow(fu_sig)` genes. Those genes and their coefficients in the predictive model were loaded in. 
+
+Again, interestingly, only CDH1 was in both the list of sPLS-DA features selected and the list generated by Fu et al. The lack of overlap in features selected using different classification methods was mentioned in the manuscript for the sPLS-DA method. The author showed that many clasisifcation methods had similar performance in classificatio accuracy but selected very distinct features, meaning that they may be capturing complementary information. 
+
+Among this list of ILC/IDC distinguishing features generated by Fu et al. , `r intersect(ILC_sig$gene_name, fu_sig$gene_name)` were found to be consistently differentially expressed between cell ines and TCGA tumours in the study by Tasdemir et al. 2018. 
+
+Although the coefficients for the prediction model and the classification cut-off were provided, how the authors scaled the RNA-seq data was unclear, making it hard to implement the model.
+
+# Thesis Figure
+
+Code used to generate figures for the thesis.
+
+# ## Figure 4.2
+
+```{r, fig.width=12, fig.height=10}
+# tumor_sample <- tumor_sample %>%
+#     .[match(rownames(pcaPost_tumor$x), .$name),]
+# pcaPost_tumor_df <- pcaPost_tumor$x %>%
+#     as.data.frame() %>%
+#     rownames_to_column("name") %>%
+#     left_join(
+#         tumor_sample
+#     )
+# chap4_1a <- pcaPost_tumor_df %>%
+#     ggplot(
+#         aes(PC1, PC2)
+#     ) +
+#     geom_point(aes( color = patient, shape = treat), 
+#                size = 3) +
+#     scale_shape_manual(values = treat_shapes) +
+#     labs(
+#         colour = "Patient",
+#         fill = "Patient",
+#         shape = "Treatment"
+#     ) +
+#     geom_mark_ellipse(
+#         aes(
+#             # label = patient,
+#             fill = patient
+#         ), 
+#         # label.fontsize = 9
+#     ) +
+#     guides( fill = FALSE,
+#             # color = guide_legend(nrow = 2), 
+#             # shape = guide_legend(nrow = 2)
+#             ) +
+#     theme(
+#         # legend.position = "top", 
+#         # legend.justification = "right"
+#     )
+# ```
+# 
+# ```{r}
+# chap4_1b <- pcaPost_tumor$x %>%
+#     as.data.frame() %>%
+#     rownames_to_column("name") %>%
+#     left_join(tumor_sample) %>%
+#     dplyr::select(PC1, PC2, PC3, patient, treat,  Diagnosis) %>%
+#     dplyr::rename(
+#         Treatment = treat,
+#         Patient = patient,
+#         `Pathology Diagnosis` = Diagnosis
+#     ) %>%
+#     mutate(
+#            `Pathology Diagnosis` = as.factor(`Pathology Diagnosis`),
+#            across(everything(), as.numeric)) %>%
+#     cor() %>%
+#     reshape2::melt() %>%
+#     dplyr::filter(
+#         Var1 != Var2, 
+#         # !str_detect(Var1, "PC") & str_detect(Var2, "PC")
+#         ) %>%
+#     .[!duplicated(.$value),] %>%
+#     ggplot(
+#         aes(x = Var1, y = Var2, fill = value)) +
+#     geom_tile() +
+#     scale_fill_distiller(palette = "RdBu", 
+#                          limit = c(-1, 1)) +
+#     scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+#     scale_y_discrete(labels = function(x) str_wrap(x, width = 10)) +
+#     labs(x = "", y = "", fill = "Correlation") +
+#     theme(
+#         panel.background = element_blank() ,
+#         panel.grid = element_blank(), 
+#         panel.border = element_blank(),
+#         # plot.margin = unit(c(0, 0, 0, 0), "mm"),
+#         axis.ticks = element_blank(), 
+#         legend.position = "top", 
+#         legend.justification = "right",
+#         legend.key.width = unit(0.8, "cm")
+#     ) +
+#     geom_text(aes(x = Var1, y = Var2, label = round(value, 2)), color = "black", 
+#                size = 4)
+# ```
+# 
+# ```{r}
+# pcaPost_tumor_veh <- logCPM_tumor %>%
+#     .[, str_detect(colnames(.), "Veh")] %>%
+#     t() %>%
+#     prcomp() 
+# chap4_1c <- pcaPost_tumor_veh %>%
+#     autoplot(
+#         data = dge_tumor$samples %>%
+#             dplyr::filter(treat == "Veh"), 
+#         x = 1, y = 2,
+#         colour = "Diagnosis", 
+#         shape = "treat",
+#         size = 5
+#     ) +
+#     scale_shape_manual(values = treat_shapes) +
+#     guides(shape = FALSE) +
+#     scale_color_manual(values = c(
+#         "infiltrating carcinoma of no special type" = "#E16A86",
+#             "invasive carcinoma of no special type" = "#00AD9A"
+#     ), 
+#     name = "Pathologist\nLabel") +
+#     geom_label_repel(
+#         data = . %>%
+#             dplyr::filter(patient == "Tumor-8"),
+#         aes(label = patient),
+#         size = 4) +
+#     labs(
+#         colour = "Diagnosis",
+#         shape = "Treatment", 
+#         x = "PC1", 
+#         y = "PC2"
+#     ) +
+#     theme(
+#         legend.position = "none"
+#     )
+# ```
+# 
+# 
+# ```{r}
+# chap4_1d <- logCPM_tumor %>%
+#     as.data.frame() %>%
+#     rownames_to_column("gene_id") %>%
+#     pivot_longer(
+#         cols = -"gene_id", 
+#         names_to = "name", 
+#         values_to = "logCPM"
+#     ) %>%
+#     left_join(dge_tumor$samples) %>%
+#     left_join(dge_tumor$genes) %>%
+#     dplyr::filter(
+#         gene_name %in% c("CDH1", "FOXA1" ,"PTEN"), 
+#         # treat == "Veh"
+#         ) %>%
+#     mutate(
+#         Diagnosis = str_to_title(Diagnosis),
+#         Diagnosis = str_wrap(Diagnosis, width = 20)
+#         ) %>%
+#     ggplot(
+#         aes(Diagnosis, logCPM, fill = Diagnosis)
+#     ) +
+#     geom_boxplot() +
+#     geom_point() +
+#     facet_wrap(~gene_name) +
+#     scale_fill_discrete_qualitative(name = "Pathologist Label") +
+#     xlab("") +
+#     theme(
+#         panel.grid = element_blank(), 
+#         axis.text.x = element_blank(), 
+#         axis.ticks.x = element_blank(),
+#         # legend.position = "top"
+#     )
+# ```
+# 
+# ```{r}
+# chap4_1e <- pred_result %>%
+#     mutate(
+#         Type = ifelse(
+#             Type == "sPLS-DA prediction", "sPLS-DA", "Pathologist Label"
+#         )
+#     )  %>%
+#     ggplot(
+#         aes(
+#             str_wrap(Type, 10),  
+#             patient, 
+#             color = str_wrap(Subtype, 15)
+#             )
+#     ) +
+#     geom_point(
+#         size = 4, 
+#         # aes(shape = Type)
+#     ) +
+#     scale_color_manual(
+#         values = diag_cols %>%
+#             set_names(str_wrap(names(diag_cols), 7)), 
+#         name = "Subtype"
+#     ) +
+#     coord_fixed(0.3) +
+#     labs( x = "", y = "") +
+#     theme(
+#         axis.text.y = element_text(
+#             color = c( rep("black", 7), "red")
+#         )
+#     )
+# # +
+# #     guides(color=guide_legend(ncol=2)) 
+# ```
+# 
+# ```{r}
+# library(gridGraphics)
+# library(grid)
+# 
+# # ## grab the scene as a grid object & save it to P1
+# # grid.echo()
+# # chap4_1f <- grid.grab()
+# png(
+#      "/Users/wenjunliu/PhD_thesis/draft_figure/chapter_04/loading.png",
+#     width = 150, height =130, units='mm', res = 300
+# )
+# plotLoadings(splsda.final, contrib = 'max', method = 'median', comp = 1,
+#              title = "" ,size.name = 1,
+#              # legend.title = "Subtype", size.legend = 2, 
+#              legend.color = diag_cols[c("IDC", "ILC")], 
+#              legend = FALSE
+#              )
+# dev.off()
+# library(magick)
+# chap4_1f  <- image_read(path = "/Users/wenjunliu/PhD_thesis/draft_figure/chapter_04/loading.png") %>%
+#     image_ggplot()
+# ```
+# 
+# ```{r}
+# library(patchwork)
+# chap4_fig1 <- plot_grid(
+#     plot_grid(
+#         chap4_1a, chap4_1b, 
+#         rel_widths = c(0.6, 0.4), 
+#         labels = c("A", "B")
+#     ), 
+#     plot_grid(
+#         chap4_1c &
+#             theme(
+#                 text = element_text(size = 14)
+#             ), chap4_1d &
+#             theme(
+#                 strip.text  = element_text(size = 12), 
+#                 legend.text = element_text(size = 11), 
+#                 legend.title = element_text(size = 12), 
+#                 plot.margin = unit(c(0, 0, 0.5, 0.5), "cm")
+#             ), 
+#         rel_widths = c(0.4, 0.7), 
+#         labels = c("C", "D")
+#     ), 
+#     plot_grid(
+#         chap4_1e &
+#             theme(
+#                 text = element_text(size = 14)
+#             ), chap4_1f &
+#             theme(
+#                 plot.margin = unit(c(-0.6, 0, 0.5, -0.3), "cm")
+#             ), 
+#         labels = c("E", "F"), 
+#         scale = c(1, 1.1), 
+#         axis = "l"
+#     ), 
+#     nrow = 3, 
+#     rel_heights = c(0.4, 0.25, 0.3) 
+#     )
+# png(
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/intro_diff.png",
+#     width = 260, height =260, units='mm', res = 300
+# )
+# chap4_fig1
+# dev.off()
+# ```
+# 
+# 
+# ## Figure 4.3
+# 
+# ```{r}
+# gsea <- gsea_res_sig %>%
+#     mutate(
+#         hjust = ifelse(NES > 0, 1.05, -0.05)
+#     ) %>%
+#     ggplot(
+#         aes(pathway, 
+#             NES, 
+#             fill = NES, 
+#         )) +
+#     geom_bar(stat="identity", position="stack") +
+#     scale_fill_distiller(palette = "RdBu", 
+#                           limit = c(-2.2, 2.2),
+#                           name = "NES") +
+#     xlab("") +
+#     ylab("") +
+#     geom_text(aes(label = pathway, y  = 0, hjust = hjust) , 
+#                   size = 2.5) + 
+#     coord_flip()  +
+#     scale_x_discrete(
+#                      breaks = NULL) +
+#     guides(size = FALSE) +
+#     theme( 
+#         panel.grid = element_blank(), 
+#         text = element_text(size = 11),  
+#         legend.text = element_text(size = 6), 
+#         legend.title = element_text(size = 7),
+#         panel.border = element_blank()
+#     )
+# # png(
+# #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/naive_gsea.png",
+# #     width = 130, height =110, units='mm', res = 300
+# # )
+# # gsea
+# # dev.off()
+# ```
+# 
+# ## Supp Fig ROC curve
+# ```{r}
+# # png("~/PhD_thesis/Images/chapter_04/ROC.png",
+# #     width = 120, height =80, units='mm', res = 300)
+# # auroc(splsda.final, roc.comp = 2, print = FALSE,
+# #       legend.title = "Subtype")
+# # dev.off()
+# ```
+# 
+# ## Supp 4.2
+# 
+# ```{r}
+# sup1a <- splsda.pred_CellLine$class$mahalanobis.dist %>%
+#     as.data.frame() %>%
+#     rownames_to_column("sample") %>%
+#     left_join(cell_meta_his) %>%
+#     dplyr::select(cell_line, 
+#                   `sPLS-DA` = "comp2", 
+#                   `Cell-line` = Histology) %>%
+#     dplyr::filter(str_detect(`Cell-line`, "like", TRUE)) %>%
+#     unique() %>%
+#     droplevels() %>%
+#     pivot_longer(
+#         cols = -"cell_line", 
+#         names_to = "Type", 
+#         values_to = "Subtype"
+#     ) %>%
+#     ggplot(
+#         aes(factor(cell_line, levels = c("MCF7", "T47D", 
+#                                          "MDAMB134VI", "SUM44")), 
+#             Type,
+#             # str_wrap(Type, 10),  
+#             color = Subtype)
+#     ) +
+#     geom_point(
+#         size = 7, 
+#         # aes(shape = Type)
+#     ) +
+#     scale_color_manual(
+#         values = c(
+#             diag_cols), 
+#         name = "Subtype", 
+#         drop = FALSE
+#     ) +
+#     coord_fixed() +
+#     labs( x = "", y = "") +
+#     # guides(color=guide_legend(ncol=2)) +
+#     theme(
+#         panel.grid = element_blank()
+#     )
+# ```
+# 
+# ```{r}
+# pred_result_ellis <- readRDS(here::here("figure/ellis_pred.rds"))
+# ellis_order <- pred_result_ellis %>%
+#   dplyr::filter(Type == "Pathologist Label") %>%
+#   mutate(
+#     group = paste(Subtype, align,sep = "_"), 
+#     group = factor(group, levels = c("ILC_TRUE", "IDC_TRUE", "IDC_FALSE"))) %>%
+#   .[order(.$group),] 
+# sup1b <- pred_result_ellis %>%
+#     mutate(Type = ifelse(
+#         str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
+#     )) %>%
+#     ggplot(
+#         aes(
+#             factor(subject_id, levels = ellis_order$subject_id), 
+#             str_wrap(Type,10), 
+#             #Type,
+#             color = str_wrap(Subtype, 15))
+#     ) +
+#     geom_point(
+#         size = 7, 
+#         # aes(shape = Type)
+#     ) +
+#     scale_color_manual(
+#         values = diag_cols %>%
+#             set_names(str_wrap(names(diag_cols), 15)), 
+#         name = "Subtype"
+#     ) +
+#     coord_fixed(1.5) +
+#     labs( x = "", y = "")+
+#     theme(
+#         legend.box.background = element_rect(colour = "black")
+#     )
+# ```
+# 
+# ```{r}
+# sup1c <- ILC_score_cell %>%
+#     rownames_to_column("sample") %>%
+#     left_join(cell_meta_his) %>%
+#     left_join(pred_result_cell) %>%
+#     dplyr::filter(
+#         Type == "Cell-line type", 
+#         str_detect(Subtype, "like", TRUE)) %>%
+#     ggplot(
+#         aes(Subtype, TotalScore, color = Subtype )
+#     ) +
+#     geom_boxplot() +
+#     scale_color_manual(values = c(diag_cols, "ILC-like" = "darkgreen"), 
+#                        name = "Subtype") +
+# 
+#     labs(
+#         x = "Cell-line type", 
+#         y = "ILC scores") +
+#     theme(legend.position = "none")
+# ```
+# 
+# ```{r}
+# ILC_score_ellis <- readRDS(here::here("figure/ellis_ILC_score.rds"))
+# sup1d <- ILC_score_ellis %>%
+#     dplyr::select(Type, Subtype, TotalScore, subject_id) %>%
+#     unique() %>%
+#     mutate(Type = ifelse(
+#         str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
+#     )) %>%
+#     pivot_wider(
+#         names_from = "Type", 
+#         values_from = "Subtype"
+#     ) %>%
+#     mutate(
+#         Type = ifelse(
+#             `sPLS-DA` ==  Pathologist, Pathologist, "Discordant"
+#         ), 
+#         Type = factor(Type, levels = c("IDC", "ILC", "Discordant"))
+#     ) %>%
+#     ggplot(
+#         aes(Type, TotalScore, color =Type )
+#     ) +
+#     geom_boxplot() +
+#     scale_color_manual(values = diag_cols, 
+#                        name = "Subtype") +
+#     theme(
+#         # axis.text.x = element_blank(), 
+#         axis.ticks.x = element_blank(), 
+#         legend.position = "none"
+#     ) +
+#     labs(
+#         x = "", 
+#         y = "ILC scores") +
+#     geom_point(aes(color = Type)) 
+# ```
+# 
+# ```{r}
+# pred_result_enobosarm <- readRDS(here::here("figure/enobosarm_pred.rds"))
+# enobosarm_order <- pred_result_enobosarm %>%
+#   dplyr::filter(Type == "Pathologist Label") %>%
+#   .[order(.$align),] 
+# sup1e <- pred_result_enobosarm %>%
+#     mutate(Type = ifelse(
+#         str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
+#     )) %>%
+#     ggplot(
+#         aes(
+#             factor(patient, levels = enobosarm_order$patient), 
+#             str_wrap(Type, 10),  color = Subtype)
+#     ) +
+#     geom_point(
+#         size = 7, 
+#         # aes(shape = Type)
+#     ) +
+#     scale_color_manual(
+#         values = c(diag_cols, "Unknow" = "grey"), 
+#         name = "Subtype"
+#     ) +
+#     coord_fixed() +
+#     labs( x = "", y = "") +
+#     theme(
+#         legend.box.background = element_rect(colour = "black"))
+# ```
+# 
+# ```{r}
+# ILC_score_enobosarm <- readRDS(here::here("figure/enobosarm_ILC_score.rds"))
+# sup1f <- ILC_score_enobosarm %>%
+#     drop_na() %>%
+#     dplyr::select(Type, Subtype, TotalScore, patient) %>%
+#     unique() %>%
+#     mutate(Type = ifelse(
+#         str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
+#     )) %>%
+#     pivot_wider(
+#         names_from = "Type", 
+#         values_from = "Subtype"
+#     ) %>%
+#     mutate(
+#         Type = ifelse(
+#             `sPLS-DA` ==  Pathologist, Pathologist, "Discordant"
+#         ), 
+#         Type = factor(Type, levels = c("IDC", "ILC", "Discordant"))
+#     ) %>%
+#     ggplot(
+#         aes(Type, TotalScore, color = Type)
+#     ) +
+#     geom_boxplot() +
+#     scale_color_manual(values = diag_cols, 
+#                        name = "subtype") +
+#     theme(
+#     # axis.text.x = element_blank(), 
+#     axis.ticks.x = element_blank(), 
+#     legend.position = "none"
+#     )+
+#     labs(
+#         x = "", 
+#         y = "ILC scores") +
+#     geom_point(aes(color = Type))
+# ```
+# 
+# ```{r}
+# sup1g <- ILC_score_veh %>%
+#     rownames_to_column("name") %>%
+#     dplyr::select(-contains("Dispersion")) %>%
+#     pivot_longer(
+#         cols = -"name", 
+#         names_to = "Score_type", 
+#         values_to = "score"
+#     ) %>%
+#     left_join(tumor_sample %>%
+#                   dplyr::select(name, patient, Diagnosis)) %>%
+#     ggplot(
+#         aes(Diagnosis, score, color = Diagnosis)
+#     ) +
+#     geom_boxplot() +
+#     scale_color_manual(values = new_diag_col, 
+#                        name = "Predicted Subtype") +
+#     labs(
+#         x = "Predicted Subtype", 
+#         y = "ILC scores") +
+#     geom_point(aes(color = Diagnosis)) +
+#     facet_wrap(~Score_type
+#                # , scale = "free_y"
+#                )  +
+#     theme(legend.position = "none")
+# ```
+# 
+# ```{r, fig.height=8, fig.width=10}
+# sup1 <- ((((sup1a | sup1b) & theme(axis.text.x = element_text(angle = 45, hjust = 1))) +
+#     plot_layout(widths = c(0.3, 0.7))) /
+#     (((sup1c + theme(axis.title.y = element_text(vjust = -12))) | plot_spacer() | (sup1d + theme(strip.text = element_text(size = 27))) ) +
+#     plot_layout(widths = c(0.3, 0.1, 0.7))) /
+#     (((sup1e + theme(axis.text.x = element_text(angle = 45, hjust = 1))) | (sup1f + theme(axis.title.x = element_text( vjust = 7)))) +
+#     plot_layout(widths = c(0.6, 0.4))) /
+#     (((sup1g + theme(axis.title.y = element_text(vjust = -12), strip.text = element_text(size = 27)))| plot_spacer()) +
+#     plot_layout(widths = c(0.9, 0.1)) )) +
+#     plot_annotation(
+#         tag_levels = "A"
+#     ) +
+#     plot_layout(
+#         guides = "collect", 
+#         heights = c(0.2, 0.3, 0.3, 0.3)
+#     ) &
+#     theme(
+#         plot.tag = element_text(size = 26, face = "bold" ), 
+#         text = element_text(size = 24), 
+#         legend.key.size = unit(2, "cm"), 
+#         legend.box.background = element_rect(colour = "black", size = 2), 
+#         legend.box.spacing = unit(10, "mm")
+#     )
+# # png(
+# #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/classifier.png",
+# #     width = 450, height =500, units='mm', res = 300
+# # )
+# # sup1
+# # dev.off()
+```
+
+
+

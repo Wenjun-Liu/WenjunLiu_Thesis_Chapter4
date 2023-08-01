@@ -1,0 +1,26 @@
+patient	Tissue_type	Diagnosis	Age	Dominant_cell_type
+TH1	Malignant	invasive carcinoma of no special type	41	Epithelial cells
+TH2	Malignant	infiltrating carcinoma of no special type	78	Epithelial cells/Stroma
+TH3	Malignant	infiltrating carcinoma of no special type	65	Epithelial cells
+TH4	Malignant	invasive carcinoma of no special type	76	Epithelial cells
+TH5	Malignant	infiltrating carcinoma of no special type	48	Stroma
+TH6	Malignant	invasive carcinoma of no special type	43	Epithelial cells
+TH7	Malignant	invasive carcinoma of no special type	53	Stroma
+TH8	Malignant	invasive carcinoma of no special type	76	Epithelial cells
+TH101	Reduction mammoplasty	normal	42	L: Epithelial cells/Stroma; R: Ducts
+TH102	Reduction mammoplasty	normal	49	L & R: Stroma, Ducts
+TH103	Reduction mammoplasty	normal	34	L & R: Stroma, Epithelial cells
+TH104	Reduction mammoplasty	normal	26	Epithelial cells
+TH105	Reduction mammoplasty	normal	42	L1: Stroma, some ducts; L2: Stroma, epithelial cells
+TH106	Reduction mammoplasty	normal	65	L & R: Stroma, Ducts
+TH107	Reduction mammoplasty	normal	48	Stroma/fat
+TH108	Reduction mammoplasty	some benign cysts	58	L & R: Stroma
+TH81	Benign	Prophylactic mastectomy. No evidence of neoplasia	55	Stroma
+TH82	Benign	invasive carcinoma of no special type	48	Stroma
+TH83	Benign	benign radial scar	51	Epithelial cells
+TH84	Benign	infiltrating carcinoma of no special type	53	Epithelial cells
+TH85	Benign	invasive carcinoma of no special type	62	Stroma, ducts
+TH86	Benign	encapsulated papillary carcinoma	60	Stroma, epithelial cells
+TH87	Benign	DCIS (no invasion)	55	Stroma, ducts
+TH88	Benign	ductal carcinoma in situ	54	Stroma, epithelial cells
+TH89	Benign	infiltrating carcinoma of no special type	57	Stroma

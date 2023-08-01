@@ -1,0 +1,643 @@
+---
+title: "CellDecon_WEHI"
+output: html_document
+date: '2022-07-01'
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  fig.width = 10
+)
+```
+
+```{r packages}
+library(tidyverse)
+library(yaml)
+library(scales)
+library(pander)
+library(glue)
+library(edgeR)
+library(AnnotationHub)
+library(ensembldb)
+library(cowplot)
+library(ggfortify)
+library(magrittr)
+library(cqn)
+library(ggrepel)
+library(DT)
+library(celldex)
+library(dtangle)
+# library(loomR)
+library(Seurat)
+library(Matrix)
+library(corrplot)
+# library(MuSiC)
+library(plotly)
+library(colorspace)
+library(ggpubr)
+library(randomcoloR)
+library(ggforce)
+library(pheatmap)
+source(here::here("analysis/smallFunctions/DWLS_funs.R"))
+```
+
+```{r options}
+panderOptions("table.split.table", Inf)
+panderOptions("big.mark", ",")
+theme_set(theme_bw())
+```
+
+```{r config}
+config <- here::here("config/config.yml") %>%
+  read_yaml()
+suffix <- paste0(config$tag)
+sp <- config$ref$species %>%
+  str_replace("(^[a-z])[a-z]*_([a-z]+)", "\\1\\2") %>%
+  str_to_title()
+```
+
+
+# Setup
+
+## Gene Annotations
+
+```{r ah}
+ah <- AnnotationHub() %>%
+  subset(rdataclass == "EnsDb") %>%
+  subset(str_detect(description, as.character(config$ref$release))) %>%
+  subset(genome == config$ref$build)
+stopifnot(length(ah) == 1)
+```
+
+```{r ensDb}
+ensDb <- ah[[1]]
+genesGR <- read_rds(here::here("output/genesGR.rds"))
+```
+
+## Sample metadata and merged counts
+
+Sample metadata and merged counts were read in and filtered as in the dge_analysis.Rmd. DGElists were formed for normal and tumor samples and `cqn` was applied for biases introduced by systematic artefacts. 
+
+```{r init_cellType}
+init_cellType <- read_delim(here::here("config/sample_meta.txt"), delim = "\t")
+init_cellType <- init_cellType %>%
+    mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex("Stroma", ignore_case = T)), TRUE, FALSE), 
+           Epithelial = ifelse(str_detect(Dominant_cell_type, regex("Epithelial", ignore_case = T)), TRUE, FALSE), 
+           Ducts = ifelse(str_detect(Dominant_cell_type, regex("ducts", ignore_case = T)), TRUE, FALSE), 
+           Fat = ifelse(str_detect(Dominant_cell_type, regex("fat", ignore_case = T)), TRUE, FALSE), 
+           patient = str_replace(patient, "TH", "TH-")) %>%
+    pivot_longer(c("Stroma", "Epithelial", "Ducts", "Fat"),
+                 names_to = "cell_type", 
+                 values_to = "TF") %>%
+    mutate(cell_type = ifelse(TF, cell_type, NA)) %>%
+    dplyr::select(-c("TF", "Dominant_cell_type")) %>%
+    .[!is.na(.$cell_type),] %>%
+    chop("cell_type") %>%
+    mutate(cell_type = vapply(.$cell_type, function(x){
+        paste(x,collapse = ";")
+    }, character(1)))
+    
+```
+
+```{r samples}
+samples <- config$samples %>%
+  here::here() %>%
+  read_tsv() %>%
+    left_join(init_cellType) %>%
+  mutate(
+    Filename = paste0(sample, ".r_1"), 
+    condition = ifelse(Tumor, 
+                       paste("Tumor", treat, sep = "_"), 
+                       paste("Normal", treat, sep = "_")), 
+    patient = vapply(.$patient, function(x){str_split(x, "-")[[1]][2]}, character(1)), 
+    patient = ifelse(Tumor, 
+                       paste("Tumor", patient, sep = "-"), 
+                       paste("Normal",patient, sep = "-")), 
+    desc = paste(patient, treat, sep = " ")
+  ) %>%
+  dplyr::select(-c("name", "sample")) %>%
+  dplyr::rename(name = desc) %>%
+  mutate_if(
+    function(x){length(unique(x)) < length(x)},
+    as.factor
+  ) %>%
+  mutate(
+    treat = relevel(treat, ref = "Veh")
+  )
+```
+
+```{r mergedSamples}
+mergedSamples <- samples %>%
+  group_by(name, patient, treat, Tumor, cell_type, Tissue_type, Age, Diagnosis) %>%
+  tally()
+tumor_sample <- mergedSamples %>%
+  dplyr::filter(Tumor == TRUE) %>%
+    droplevels()
+```
+
+Tumour samples were classified into a IDC-like and a ILC-like group bassing on the analysis in [ILC/IDC classification](IDC_ILC.html):
+
+```{r}
+tumor_sample <- tumor_sample %>%
+    dplyr::mutate(
+        Diagnosis = ifelse(
+            str_detect(Diagnosis, "invasive"), 
+            "ILC-like", "IDC-like"
+        ),
+        Diagnosis = ifelse(
+            patient == "Tumor-8", 
+            "IDC-like", 
+            Diagnosis
+        ), 
+        Diagnosis = as.factor(Diagnosis)
+    )
+```
+
+```{r}
+tumor_sample %>%
+    ungroup() %>%
+    dplyr::select(patient, Diagnosis) %>%
+    unique() %>%
+    pander()
+```
+
+```{r set_cols}
+treat_cols <- c(
+  Veh = rgb(0.7, 0.7, 0.7),
+  DHT = rgb(0.8, 0.2, 0.2),
+  E2 = rgb(0.2, 0.2, 0.8),
+  `E2+DHT` = rgb(1, 0.4, 1)
+)
+tumor_cols <- hcl.colors(
+  n = length(unique(samples$Tumor)), 
+  palette = "Zissou 1"
+  ) %>%
+  setNames(unique(samples$Tumor))
+patient_cols <- hcl.colors(
+  n = length(levels(mergedSamples$patient)), 
+  palette = "Spectral"
+  ) %>%
+  setNames(levels(mergedSamples$patient))
+diag_cols <- readRDS("~/GSE800098/output/diag_cols.rds")
+```
+
+```{r treat_shapes}
+treat_shapes <- c(
+  Veh = 1,
+  DHT = 19,
+  E2 = 15,
+  `E2+DHT` = 17
+)
+```
+
+```{r counts}
+# counts <- here::here("data/aligned/counts/counts.out.gz") %>%
+#   gzfile() %>%
+#   read_tsv(comment = "#") %>%
+#   dplyr::select(Geneid, ends_with("bam")) %>%
+#   rename_at(vars(ends_with("bam")), dirname) %>%
+#   rename_all(basename) %>%
+#   column_to_rownames("Geneid")
+```
+
+```{r mergedCounts}
+# mergedCounts <- counts %>%
+#   rownames_to_column("gene_id") %>%
+#   pivot_longer(
+#     cols = -gene_id,
+#     names_to = "Filename",
+#     values_to = "counts"
+#   ) %>%
+#   left_join(samples, by = "Filename") %>%
+#   group_by(
+#     gene_id, name, patient, treat, Tumor) %>%
+#   summarise(counts = sum(counts), .groups = "drop") %>%
+#   pivot_wider(
+#     id_cols = gene_id,
+#     values_from = counts,
+#     names_from = name
+#   ) %>%
+#   column_to_rownames("gene_id")
+# saveRDS(mergedCounts, here::here("data/mergedCounts.rds"))
+mergedCounts <- readRDS(here::here("data/mergedCounts.rds"))
+```
+
+```{r rm_counts, echo=FALSE}
+rm(samples)
+gc()
+```
+
+The filtered and normalised `DGEList` was loaded in. 
+
+```{r dge}
+dge_tumor <- readRDS(here::here("output/dge_tumor.rds"))
+```
+
+```{r cqn}
+cqNorma_tumor <- with(
+  dge_tumor,
+  cqn(
+    counts= counts,
+    x = genes$gc_content,
+    lengths = genes$ave_tx_len
+  )
+)
+dge_tumor$offset <- cqNorma_tumor$glm.offset
+logCPM_tumor <- cqNorma_tumor$y + cqNorma_tumor$offset
+```
+
+```{r pcaPost}
+pcaPost_tumor <- logCPM_tumor %>%
+  t() %>%
+  prcomp() 
+```
+
+## Reference data
+
+Annotaed scRNA-seq data was retrieved from [*R code and downstream analysis objects for the scRNA-seq atlas of normal and tumorigenic human breast tissue*](https://www.nature.com/articles/s41597-022-01236-2).
+
+Firstly, two separate `Seruat` objects, both containing total cells were downloaded, one from 13 reduction mammoplasty tissues (8 pre-menopausal & 3 post-menopausal), and the other one from 13 naive ER+ tumor.. 
+
+Information about each tissue, including if total or only epithelial cells were sequenced, the condition, diagnosis (only for ER+ tummor), gender, menopausal status, and age was read in as a `data.frame`. 
+
+The full tissue metadata table is displayed below:
+
+```{r readSeruat}
+Seruat_ERTotal <- readRDS(here::here("data/scRNA_ref/WEHI/SeuratObject_ERTotal.rds"))
+Seruat_NormTotal <- readRDS(here::here("data/scRNA_ref/WEHI/SeuratObject_NormTotal.rds"))
+tissueInfo <- readxl::read_xlsx(here::here("data/scRNA_ref/WEHI/sampleInfo.xlsx"), sheet = 1) %>%
+    mutate(
+        Specimen_ID = vapply(.$`Sample Name`, function(x){
+            str_remove_all(x, "-epi|-total")
+        }, character(1))
+    ) %>%
+    dplyr::select(-`Sample Name`) %>%
+    left_join(read_table(here::here("data/scRNA_ref/WEHI/patientAge.txt"))) %>%
+    relocate(
+        Specimen_ID, .before = Patient
+    )
+```
+
+```{r tissueInfo_dt}
+tissueInfo %>%
+    mutate_if(is.character, as.factor) %>%
+    datatable(
+        filter = "top", 
+        caption = htmltools::tags$caption(
+                  htmltools::em(
+                      "Tissue metadata of all 69 breast tissue sequenced in Pal(2021)SingleCellRNA")
+              )
+    )
+```
+
+```{r seruat_sub}
+Seruat_ERsub <- readRDS(here::here("data/scRNA_ref/WEHI/SeuratObject_ERTotalSub.rds"))
+Seruat_Normsub <- readRDS(here::here("data/scRNA_ref/WEHI/SeuratObject_NormTotalSub.rds"))
+```
+
+Among normal tissues, `r length(unique(Seruat_NormTotal[[]]$seurat_clusters))` clusters were identified, cluster 1, 3, 4 were identified to be epithelial cell through ECPAM expression, where cluster 4 was mature luminal (ML), cluster 1 was luminal progenitor and cluster 3 was basal cells. The other EPCAM-negative non-epithelial cells were then reclustered to study the tumor microenvironment, where `r length(unique(Seruat_Normsub[[]]$seurat_clusters))` sub-clusters were identified. `Seurat` object for the non-epithelail cells subclustering result was also readed in. Visualisations of the two-step clustering results and the cluster annotation can be found [in this figure](https://www.embopress.org/cms/asset/e2ad3a16-4bd0-4cb5-9af0-17d5e77c9735/embj2020107333-fig-0002-m.jpg). Note: when the non-epithelial cells were reclusterd, a really small subset of cells (`r `nrow(Seruat_Normsub@meta.data %>% dplyr::filter(seurat_clusters == 5))` cells) were also labelled as Epithelial cells. For simplicity, those cells were excluded and not used in the reference dataset for deconvolution.
+
+Among ER^+^ tumor cells, `r length(unique(Seruat_ERTotal[[]]$seurat_clusters))` clusters were identified, where 1,5,6 and 7 were defined to be epithalial cells. Out of those four epithelial clusters, cluster 1 and 5 were defined to be tumor epithelial cells by inferring CNB, and 6 and 7 were defined to be normal epithelial. The non-epithelial cells were also reclustered into `r length(unique(Seruat_ERsub[[]]$seurat_clusters))` subcluster and annotated. Visualisations for this part of the analysis are: [Figure 6](https://www.embopress.org/cms/asset/f035e7db-cd0f-46a6-a820-f96c055d3e24/embj2020107333-fig-0006-m.jpg) and [Figure 7](https://www.embopress.org/cms/asset/1a957da0-974c-4a0d-b230-6458d8bcf22d/embj2020107333-fig-0007-m.jpg). 
+
+The `Seruat` object contained which cluster cells were assigned to but not the cluster annotation. So I manually put the annotations in. 
+
+```{r cellAnnot}
+Seruat_NormTotal@meta.data <- Seruat_NormTotal@meta.data %>%
+    mutate(
+        seurat_clusters = as.numeric(as.character(seurat_clusters)) +1,
+        cell_type = ifelse(seurat_clusters %in% c(1, 3, 4), "Epithelial", "Non-Epithelial")
+    ) %>%
+    rownames_to_column("cell_id")
+Seruat_Normsub@meta.data <- Seruat_Normsub@meta.data %>%
+    mutate(
+        seurat_clusters = as.numeric(as.character(seurat_clusters)) +1L
+    ) %>%
+    rownames_to_column("cell_id") %>%
+    left_join(
+        data_frame(
+            seurat_clusters = c(1:7),
+            cell_type = c(
+                "Fibroblasts", "Endothelial_vasc", "Pericytes", "Myeloid",
+                "Lymphoid", "Epi", "Endothelial_lymph"
+            )
+        )
+    )  %>%
+    dplyr::filter(seurat_clusters != 6)
+Seruat_ERTotal@meta.data <- Seruat_ERTotal@meta.data %>%
+    mutate(
+        seurat_clusters = as.numeric(as.character(seurat_clusters)) +1,
+        cell_type = case_when(
+            seurat_clusters %in% c(1,5) ~ "Tumor_Epithelial",
+            seurat_clusters %in% c(6,7) ~ "Normal_Epithelial",
+            !seurat_clusters %in% c(1,5,6,7) ~ "Non-Epithelial")
+    ) %>%
+    rownames_to_column("cell_id")
+Seruat_ERsub@meta.data <- Seruat_ERsub@meta.data %>%
+    mutate(
+        seurat_clusters = as.numeric(as.character(seurat_clusters)) +1L
+    ) %>%
+    rownames_to_column("cell_id") %>%
+    left_join(
+        data_frame(
+            seurat_clusters = c(1:13),
+            cell_type = c(
+                "T cells", "TAMs", "CAFs", "Pericytes", NA, "Endothelial", "TAMs",
+                "B cells", "Myeloid", "CAFs", "Plasma cells", NA, NA
+            )
+        )
+    )
+```
+
+```{r}
+# rm(Seruat_ERsub, 
+#    Seruat_ERTotal, 
+#    Seruat_Normsub, 
+#    Seruat_NormTotal)
+```
+
+### Subset the reference
+
+Since the full scRNA-seq data contains too many cells and is too big to handle on my local machine, I randomly sampled 10% of each cell type to form the reference datasets for deconvolution for both the ER+ tumor and the normal tissues. 
+
+```{r subset_Ref_normal}
+# set.seed(123)
+# normalCell_meta <- Seruat_NormTotal@meta.data %>%
+#     dplyr::filter(cell_type == "Epithelial") %>%
+#     sample_frac(0.1) %>%
+#     rbind(
+#         Seruat_Normsub@meta.data %>%
+#             group_by(cell_type) %>%
+#             sample_frac(0.1)
+#     )
+# normalCell_mat <- GetAssayData(Seruat_NormTotal, slot = 'data') %>%
+#     .[ ,colnames(.) %in% normalCell_meta$cell_id] %>%
+#     .[,match(normalCell_meta$cell_id, colnames(.))] %>%
+#     as.matrix() 
+# saveRDS(normalCell_mat, here::here("data/scRNA_ref/WEHI/normalCell_mat.rds"))
+# saveRDS(normalCell_meta, here::here("data/scRNA_ref/WEHI/normalCell_meta.rds"))
+normalCell_mat <- readRDS(here::here("data/scRNA_ref/WEHI/normalCell_mat.rds"))
+normalCell_meta <- readRDS(here::here("data/scRNA_ref/WEHI/normalCell_meta.rds"))
+```
+
+```{r subset_Ref_ER}
+# set.seed(123)
+# ERCell_meta <- Seruat_ERTotal@meta.data %>%
+#     dplyr::filter(cell_type %in% c("Tumor_Epithelial", "Normal_Epithelial")) %>%
+#     sample_frac(0.1) %>%
+#     rbind(
+#         Seruat_ERsub@meta.data %>%
+#             drop_na() %>%
+#             group_by(cell_type) %>%
+#             sample_frac(0.1)
+#     )
+# temp <- GetAssayData(Seruat_ERTotal, slot = 'data') %>%
+#     .[ ,colnames(.) %in% ERCell_meta$cell_id] %>%
+#     .[,match(ERCell_meta$cell_id, colnames(.))] %>%
+#     as.matrix() 
+# saveRDS(temp, here::here("data/scRNA_ref/WEHI/ERCell_mat.rds"))
+# saveRDS(ERCell_meta, here::here("data/scRNA_ref/WEHI/ERCell_meta.rds"))
+ERCell_mat <- readRDS(here::here("data/scRNA_ref/WEHI/ERCell_mat.rds"))
+ERCell_meta <- readRDS(here::here("data/scRNA_ref/WEHI/ERCell_meta.rds"))
+```
+
+
+```{r}
+rm(Seruat_ERsub, 
+   Seruat_ERTotal, 
+   Seruat_Normsub, 
+   Seruat_NormTotal)
+```
+
+```{r cell_cols}
+cell_cols_tot <- hcl.colors(
+    n = length(unique(normalCell_meta$cell_type)), 
+    palette = "Zissou 1") %>%
+    setNames(unique(normalCell_meta$cell_type) %>%
+                        str_replace_all("_", " "))
+cell_cols_ER <- distinctColorPalette(length(unique(ERCell_meta$cell_type))) %>%
+    setNames(unique(ERCell_meta$cell_type) %>%
+                        str_replace_all("_", " "))
+```
+
+# DWLS
+
+In DWLS, gene signatures of each cell type are firstly determined through differential expression analysis, which could be undertaken using either Seurat or MAST. Mean of expressions of those signatures detected across cells assigned to be the same cell type will be taken and those mean expressions are used to model the bulk RNA-seq expression through a weighted least square approach. 
+
+`DWLS` offers two options for the signature gene selection, one using MAST while the other one uses Seruat. The MAST options requires the raw scRNA-seq count as input, which was what was [available in the Garvan dataset](CellDecon_garvan.html). But in this study, only the log-transformed and scaled data were provided with the `Seruat` object, so the `buildSignatureMatrixUsingSeurat` option was chosen instead. 
+
+## Tumor
+```{r logCPM_tumor_n}
+mapID_test <- mapIds(ensDb, keys = rownames(logCPM_tumor), column = "GENENAME", keytype = "GENEID") %>%
+    .[!is.na(.)]
+index_test <- pmatch(rownames(logCPM_tumor), names(mapID_test))
+logCPM_tumor_n <- logCPM_tumor
+rownames(logCPM_tumor_n) <- mapID_test[index_test]
+logCPM_tumor_n <- logCPM_tumor_n[!is.na(rownames(logCPM_tumor_n)), ]
+# saveRDS(logCPM_tumor_n, here::here("data/scRNA_ref/garvan/logCPM_tumor_n.rds"))
+```
+
+```{r}
+#replace the spaec in cell type annotatoin to avoid error in DWLS
+ERCell_meta <- ERCell_meta %>%
+    mutate(
+        cell_type = str_replace(cell_type, " ", "_")
+    ) 
+```
+
+```{r solDWLS_tumor}
+# result <- here::here("output/DWLS/WEHI_ER/signature")
+# Sig_tumor <- buildSignatureMatrixUsingSeurat(scdata = ERCell_mat,
+#                                      id = ERCell_meta$cell_type,
+#                                      path= result,
+#                                      diff.cutoff=0.5,
+#                                      pval.cutoff=0.01)
+# tr_tumor <- sapply(colnames(logCPM_tumor_n), function(x){
+#   logCPM_tumor_n[,x] %>%
+#     set_names(rownames(logCPM_tumor_n)) %>%
+#     trimData(Sig_tumor, .)
+# }, simplify = FALSE)
+# solDWLS_tumor <- sapply(colnames(logCPM_tumor_n), function(x){
+#   solveDampenedWLS(tr_tumor[[x]]$sig, tr_tumor[[x]]$bulk)
+# }, simplify = FALSE)
+# write_rds(solDWLS_tumor,
+#           here::here(
+#               "output/DWLS/WEHI_ER/results_tumor.rds"
+#           ))
+```
+
+```{r, fig.width=12, fig.height=6, fig.cap="*Cell type proportion estimated derived from DWLS for each tumor samples. Epithelial cell was the dominating cell type in all samples. Overall, more normal epithelials than cancer epithelial cells were detected.*"}
+solDWLS_tumor <- readRDS(here::here("output/DWLS/WEHI_ER/results_tumor.rds"))
+solDWLS_tumor %>%
+    bind_rows() %>%
+    mutate(Sample = names(solDWLS_tumor) ) %>%
+    pivot_longer(col = -"Sample",
+                 names_to = "Cell Type", values_to = "Proportion") %>%
+    mutate(treatment = vapply(.$Sample, 
+                              function(x){str_split(x, " ")[[1]][2]}, character(1)), 
+           patient = vapply(.$Sample, 
+                            function(x){str_split(x, " ")[[1]][1]}, character(1)), 
+           `Cell Type` = str_replace_all(`Cell Type`, "_", " ")) %>%
+    ggplot(aes(x = Proportion, y= treatment, 
+               fill = factor(`Cell Type`, levels = rev(c("Tumor Epithelial","Normal Epithelial","B cells", "T cells",
+                                                     "Endothelial","CAFs", "TAMs", "Myeloid", "Pericytes","Plasma cells"))))) + 
+    geom_bar(position="stack", stat="identity") +
+    facet_wrap(~patient) +
+    scale_fill_manual(values = cell_cols_ER, 
+            limits = force,           
+           name = "Cell Type")
+
+```
+
+```{r}
+WEHI_tumor <- solDWLS_tumor %>%
+    bind_rows() %>%
+    mutate(name = names(solDWLS_tumor)
+           # , 
+           # Myeloid = Myeloid + TAMs
+           ) %>%
+    # dplyr::select(-TAMs) %>%
+    pivot_longer(col = -"name",
+                 names_to = "Cell Type", values_to = "WEHI_Prop") 
+```
+
+Differences in the predicted cell type proportions between the two groups of treatment-naive tumours: IDC-like and ILC-like tumours were visualised. 
+
+```{r, fig.height=4, fig.width=14}
+new_diag_col <- qualitative_hcl(2, palette = "Dark 3") %>%
+    set_names(c("IDC-like", "ILC-like"))
+temp <- WEHI_tumor %>%
+    left_join(tumor_sample %>%
+                  ungroup() %>%
+                  dplyr::select(name, 
+                                Treatment = treat, Age, Diagnosis, patient)) %>%
+    mutate(
+        `Cell Type` = str_replace_all(`Cell Type`, "_", " "), 
+        `Cell Type` = as.factor(`Cell Type`)) %>%
+    dplyr::filter(Treatment == "Veh") %>%
+    group_by(`Cell Type`) %>%
+    mutate(ave = mean(WEHI_Prop)) %>%
+    ungroup()
+cellOrder <- temp %>%
+    dplyr::select(`Cell Type`, ave) %>%
+    unique() %>%
+    arrange(desc(ave)) %>%
+    pull(`Cell Type`)
+# stat <- temp %>%
+#     split(f = .$`Cell Type`) %>%
+#     lapply(dplyr::select, Diagnosis, WEHI_Prop, name) %>%
+#     lapply(pivot_wider, names_from = Diagnosis, values_from = WEHI_Prop)  %>%
+#     lapply(function(x){
+#             t.test(
+#                 x$`ILC-like`, x$`IDC-like`)$p.value
+#     })
+sup2a <- temp %>%
+    mutate(WEHI_Prop = WEHI_Prop*100) %>%
+    ggplot(
+        aes(
+            factor(`Cell Type`, levels = cellOrder), 
+            WEHI_Prop, fill = Diagnosis) 
+    ) +
+    geom_boxplot(
+    ) +
+    scale_fill_manual(values = new_diag_col, 
+                      name = "Subtype") + 
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+    theme(
+        axis.ticks.x = element_blank(), 
+        panel.grid = element_blank(), 
+        text = element_text(size = 22), 
+        legend.position = "none") +
+    labs(
+        # x = "Cell Type",
+        x = "",
+        y = "Proportion (%)"
+    )
+sup2a
+```
+
+T-tests were performed with each cell type to compare the mean predicted cell type proportions between the two treatment groups. Only endothelial cell had a raw p-value that is smaller than 0.05. 
+
+```{r}
+temp %>%
+    split(f = .$`Cell Type`) %>%
+    lapply(dplyr::select, Diagnosis, WEHI_Prop, name) %>%
+    lapply(pivot_wider, names_from = Diagnosis, values_from = WEHI_Prop)  %>%
+    lapply(function(x){
+            t.test(
+                x$`ILC-like`, x$`IDC-like`)$p.value
+    }) %>%
+    unlist() %>%
+    enframe(
+        name = "Cell Type", 
+        value = "p-value"
+    ) %>%
+    pander()
+```
+
+```{r}
+library(ggpubr)
+total_immune <- solDWLS_tumor %>%
+    bind_rows() %>%
+    mutate(
+        name = names(solDWLS_tumor), 
+        total_immune = (B_cells + Myeloid + T_cells + TAMs)*100) %>%
+    dplyr::select(name, total_immune)  %>%
+    left_join(tumor_sample %>%
+                  ungroup() %>%
+                  dplyr::select(name,  treat, Diagnosis)) %>%
+    dplyr::filter(treat == "Veh") 
+temp <- total_immune %>%
+    dplyr::select(-treat) %>%
+    pivot_wider(names_from = "Diagnosis", values_from = "total_immune") 
+immune_stat <- t.test(temp$`ILC-like`, temp$`IDC-like`)$p.value
+```
+
+The total predicted immune proportion was derived by summing the predicted proportions of B cells, myeloid, T cells and TAMs within each sample. The difference in mean immune proportions between the two tumour groups is not statistically significant (p-value = `r immune_stat`).
+
+```{r}
+sup2b <- total_immune %>%
+    ggplot(
+        aes(Diagnosis, total_immune, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    scale_fill_manual(values = new_diag_col, 
+                      name = "Subtype") +
+    labs(
+        # x = "Cell Type",
+        x = "",
+        y = "Total Immune Proportion (%)"
+    )
+sup2b
+```
+
+# Thesis figure
+
+Code used to generate figures for the thesis. 
+
+
+```{r}
+# sup2 <- (sup2a | sup2b) +
+#     plot_annotation(tag_levels = "A") +
+#     plot_layout(
+#         widths = c(0.8, 0.2), 
+#         guides = "collect"
+#     ) &
+#     theme(
+#         plot.tag = element_text(size = 26, face = "bold" ), 
+#         text = element_text(size = 24)
+#     )
+# # png(
+# #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/deconvolute.png",
+# #     width = 500, height =150, units='mm', res = 300
+# # )
+# # sup2
+# # dev.off()
+```
+
+

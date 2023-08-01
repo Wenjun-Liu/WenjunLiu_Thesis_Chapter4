@@ -1,0 +1,38 @@
+name: "20131906_HickeyT_JC_NormalBreast"
+output_dir: ../docs
+navbar:
+  title: "20131906_HickeyT_JC_NormalBreast"
+  left:
+  - text: Home
+    href: index.html
+  - text: Description
+    href: description.html
+  - text: QC
+    menu:
+      - text: Raw Data
+        href: qc_raw.html
+      - text: Trimmed Data
+        href: qc_trimmed.html
+      - text: Aligned Data
+        href: qc_aligned.html
+  - text: Analysis
+    menu:
+      - text: Differential Gene Expression
+        href: dge_analysis.html
+      - text: IDC/ILC classification
+        href: IDC_ILC.html
+      - text: Cell Type Deconvolution
+        href: CellDecon_WEHI.html
+      - text: sSNAPPY
+        href: sSNAPPY.html
+      - text: E2 response
+        href: E2_signal.html
+      - text: DHT response
+        href: DHT_signal.html
+output:
+  workflowr::wflow_html:
+    toc: yes
+    toc_float: yes
+    code_folding: hide
+    theme: cosmo
+    highlight: textmate

@@ -1,0 +1,762 @@
+---
+title: "sSNAPPY"
+output: html_document
+date: '2022-05-02'
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  fig.width = 10
+)
+```
+
+```{r packages}
+library(tidyverse)
+library(yaml)
+library(scales)
+library(pander)
+library(AnnotationHub)
+library(ggraph)
+library(igraph)
+library(ensembldb)
+library(cowplot)
+library(magrittr)
+library(sSNAPPY)
+library(cqn)
+library(DT)
+library(multcomp)
+library(rvest)
+library(ggfortify)
+library(xml2)
+library(org.Hs.eg.db)
+library(lme4)
+library(colorspace)
+library(lmerTest)
+library(reactable)
+library(corrplot)
+library(scatterpie)
+library(htmltools)
+library(RColorBrewer)
+library(msigdbr)
+library(UpSetR)
+library(glue)
+library(ggfortify)
+library(pheatmap)
+library(parallel)
+library(ggplotify)
+library(edgeR)
+library(plotly)
+library(ggforce)
+library(ggnewscale)
+library(concaveman)
+library(fgsea)
+```
+
+```{r options}
+panderOptions("table.split.table", Inf)
+panderOptions("big.mark", ",")
+theme_set(theme_bw())
+```
+
+```{r config}
+config <- here::here("config/config.yml") %>%
+  read_yaml()
+suffix <- paste0(config$tag)
+sp <- config$ref$species %>%
+  str_replace("(^[a-z])[a-z]*_([a-z]+)", "\\1\\2") %>%
+  str_to_title()
+```
+
+```{r formatP}
+formatP <- function(p, m = 0.0001){
+out <- rep("", length(p))
+out[p < m] <- sprintf("%.2e", p[p<m])
+out[p >= m] <- sprintf("%.4f", p[p>=m])
+out
+}
+```
+
+# Setup
+
+## Gene Annotations
+
+```{r ah}
+ah <- AnnotationHub() %>%
+  subset(rdataclass == "EnsDb") %>%
+  subset(str_detect(description, as.character(config$ref$release))) %>%
+  subset(genome == config$ref$build)
+stopifnot(length(ah) == 1)
+```
+
+```{r ensDb}
+ensDb <- ah[[1]]
+genesGR <- read_rds(here::here("output/genesGR.rds"))
+```
+
+## Sample metadata and merged counts
+
+Sample metadata and merged counts were read in and filtered as in the dge_analysis.Rmd. DGElists were formed for normal and tumor samples and `cqn` was applied for biases introduced by systematic artefacts.
+
+```{r init_cellType}
+init_cellType <- read_delim(here::here("config/sample_meta.txt"), delim = "\t")
+init_cellType <- init_cellType %>%
+    mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex("Stroma", ignore_case = T)), TRUE, FALSE), 
+           Epithelial = ifelse(str_detect(Dominant_cell_type, regex("Epithelial", ignore_case = T)), TRUE, FALSE), 
+           Ducts = ifelse(str_detect(Dominant_cell_type, regex("ducts", ignore_case = T)), TRUE, FALSE), 
+           Fat = ifelse(str_detect(Dominant_cell_type, regex("fat", ignore_case = T)), TRUE, FALSE), 
+           patient = str_replace(patient, "TH", "TH-")) %>%
+    pivot_longer(c("Stroma", "Epithelial", "Ducts", "Fat"),
+                 names_to = "cell_type", 
+                 values_to = "TF") %>%
+    mutate(cell_type = ifelse(TF, cell_type, NA)) %>%
+    dplyr::select(-c("TF", "Dominant_cell_type")) %>%
+    .[!is.na(.$cell_type),] %>%
+    chop("cell_type") %>%
+    mutate(cell_type = vapply(.$cell_type, function(x){
+        paste(x,collapse = ";")
+    }, character(1)))
+    
+```
+
+```{r samples}
+samples <- config$samples %>%
+  here::here() %>%
+  read_tsv() %>%
+    left_join(init_cellType) %>%
+  mutate(
+    Filename = paste0(sample, ".r_1"), 
+    condition = ifelse(Tumor, 
+                       paste("Tumor", treat, sep = "_"), 
+                       paste("Normal", treat, sep = "_")), 
+    patient = vapply(.$patient, function(x){str_split(x, "-")[[1]][2]}, character(1)), 
+    patient = ifelse(Tumor, 
+                       paste("Tumor", patient, sep = "-"), 
+                       paste("Normal",patient, sep = "-")), 
+    desc = paste(patient, treat, sep = " ")
+  ) %>%
+  dplyr::select(-c("name", "sample")) %>%
+  dplyr::rename(name = desc) %>%
+  mutate_if(
+    function(x){length(unique(x)) < length(x)},
+    as.factor
+  ) %>%
+  mutate(
+    treat = relevel(treat, ref = "Veh")
+  )
+```
+
+```{r mergedSamples}
+mergedSamples <- samples %>%
+  group_by(name, patient, treat, Tumor, cell_type, Tissue_type, Age, Diagnosis) %>%
+  tally()
+tumor_sample <- mergedSamples %>%
+  dplyr::filter(Tumor == TRUE) %>%
+    droplevels()
+```
+
+Tumour samples were classified into a IDC-like and a ILC-like group bassing on the analysis in [ILC/IDC classification](IDC_ILC.html):
+
+```{r}
+tumor_sample <- tumor_sample %>%
+    dplyr::mutate(
+        Diagnosis = ifelse(
+            str_detect(Diagnosis, "invasive"), 
+            "ILC-like", "IDC-like"
+        ),
+        Diagnosis = ifelse(
+            patient == "Tumor-8", 
+            "IDC-like", 
+            Diagnosis
+        ), 
+        Diagnosis = as.factor(Diagnosis)
+    )
+```
+
+```{r}
+tumor_sample %>%
+    ungroup() %>%
+    dplyr::select(patient, Diagnosis) %>%
+    unique() %>%
+    pander()
+```
+
+```{r set_cols}
+treat_cols <- c(
+  Veh = rgb(0.7, 0.7, 0.7),
+  DHT = rgb(0.8, 0.2, 0.2),
+  E2 = rgb(0.2, 0.2, 0.8),
+  `E2+DHT` = rgb(1, 0.4, 1)
+)
+tumor_cols <- hcl.colors(
+  n = length(unique(samples$Tumor)), 
+  palette = "Zissou 1"
+  ) %>%
+  setNames(unique(samples$Tumor))
+patient_cols <- hcl.colors(
+  n = length(levels(mergedSamples$patient)), 
+  palette = "Spectral"
+  ) %>%
+  setNames(levels(mergedSamples$patient))
+diag_cols <- readRDS("~/GSE800098/output/diag_cols.rds")
+```
+
+```{r treat_shapes}
+treat_shapes <- c(
+  Veh = 1,
+  DHT = 19,
+  E2 = 15,
+  `E2+DHT` = 17
+)
+```
+
+```{r counts}
+# counts <- here::here("data/aligned/counts/counts.out.gz") %>%
+#   gzfile() %>%
+#   read_tsv(comment = "#") %>%
+#   dplyr::select(Geneid, ends_with("bam")) %>%
+#   rename_at(vars(ends_with("bam")), dirname) %>%
+#   rename_all(basename) %>%
+#   column_to_rownames("Geneid")
+```
+
+```{r mergedCounts}
+# mergedCounts <- counts %>%
+#   rownames_to_column("gene_id") %>%
+#   pivot_longer(
+#     cols = -gene_id,
+#     names_to = "Filename",
+#     values_to = "counts"
+#   ) %>%
+#   left_join(samples, by = "Filename") %>%
+#   group_by(
+#     gene_id, name, patient, treat, Tumor) %>%
+#   summarise(counts = sum(counts), .groups = "drop") %>%
+#   pivot_wider(
+#     id_cols = gene_id,
+#     values_from = counts,
+#     names_from = name
+#   ) %>%
+#   column_to_rownames("gene_id")
+# saveRDS(mergedCounts, here::here("data/mergedCounts.rds"))
+mergedCounts <- readRDS(here::here("data/mergedCounts.rds"))
+```
+
+```{r rm_counts, echo=FALSE}
+rm(samples)
+gc()
+```
+
+The filtered and normalised `DGEList` was loaded in. 
+
+```{r dge}
+dge_tumor <- readRDS(here::here("output/dge_tumor.rds"))
+```
+
+```{r cqn}
+cqNorma_tumor <- with(
+  dge_tumor,
+  cqn(
+    counts= counts,
+    x = genes$gc_content,
+    lengths = genes$ave_tx_len
+  )
+)
+dge_tumor$offset <- cqNorma_tumor$glm.offset
+logCPM_tumor <- cqNorma_tumor$y + cqNorma_tumor$offset
+```
+
+```{r pcaPost}
+pcaPost_tumor <- logCPM_tumor %>%
+  t() %>%
+  prcomp() 
+```
+
+## Convert gene id
+
+To apply the *sSNAPPY* workflow, the rownames of the logCPM matrix must be converted from gene IDs to entrez ID. 
+
+```{r entrezId}
+rownames(logCPM_tumor) <- mapIds(ensDb,rownames(logCPM_tumor), "ENTREZID", keytype = "GENEID")
+logCPM_tumor <- logCPM_tumor[!is.na(rownames(logCPM_tumor)),]
+```
+
+# KEGG Pathway filtering
+
+Pathway topologies of KEGG pathways were retrieved.
+
+```{r gsTopology}
+gsTopology <- retrieve_topology(database = "kegg", species = "hsapiens")
+```
+
+`r length(gsTopology)` pathways were retrieved. To make the results more intepretable and more relevant to this project, irrelevant KEGG pathways were filtered out.
+
+KEGG pathway categorizations were retrieved from KEGG [official website](https://www.genome.jp/kegg/pathway.html):
+
+```{r keggCategory}
+# keggCategory <- read_html("https://www.genome.jp/kegg/pathway.html")
+# # keggCategory %>%
+# #   html_node("body") %>%
+# #   xml_find_all("//b[@id]") %>%
+# #   html_text()
+# subCategory <- keggCategory %>%
+#   html_node("body") %>%
+#   xml_find_all("//b") %>%
+#   html_text() 
+# 
+# KEGGwithN <- keggCategory %>%
+#   html_node("body") %>%
+#   xml_find_all("//div[contains(@class, 'list')]") %>%
+#   .[-c(1:4)] %>%
+#   html_text()
+# keggCategory <- KEGGwithN %>%
+#   setNames(subCategory[-c(1:9)]) %>%
+#   enframe(name = "subcategory", 
+#           value = "pathways") %>%
+#   mutate(pathways = strsplit(pathways, "\n ")) %>%
+#   unnest(pathways) %>%
+#   dplyr::filter(pathways != "", 
+#                 pathways != " ") %>%
+#   mutate(
+#     pathways = vapply(.$pathways, function(x){
+#     str_remove(x, "[0-9]{5} M R|[0-9]{5} M N")
+#   }, character(1))) %>%
+#   mutate(
+#     pathways = vapply(.$pathways, function(x){
+#     str_remove(x, "[0-9]{5} M")
+#   }, character(1)))  %>%
+#   mutate(
+#     pathways = vapply(.$pathways, function(x){
+#     str_remove(x, "[0-9]{5} N")
+#   }, character(1)))  %>%
+#   mutate(
+#     pathways = vapply(.$pathways, function(x){
+#     str_remove(x, "[0-9]{5}")
+#   }, character(1))) %>%
+#   mutate(main = vapply(.$subcategory, function(x){
+#     str_sub(x, start = 1, end = 2)
+#   }, character(1))) %>%
+#   left_join(subCategory[c(2:8)] %>%
+#   enframe(name = NULL, 
+#           value = "Category") %>%
+#   mutate(
+#     main = vapply(.$Category, function(x){
+#       str_sub(x, start = 1, end = 2)
+#     }, character(1)), 
+#     Category =  vapply(.$Category, function(x){
+#       str_sub(x, start = 3, end = -1)
+#     }, character(1))
+#   )) %>%
+#   mutate(
+#     subNumber = vapply(.$subcategory, function(x){
+#       str_split(x, " ")[[1]][1]
+#     }, character(1)), 
+#     subcategory =  vapply(.$subcategory, function(x){
+#      str_remove(x
+#                 , "^.\\.[0-9]{1,} ")
+#     }, character(1))
+#   ) %>%
+#   dplyr::select(Category, subNumber, subcategory, pathways) %>%
+#   mutate(pathways = vapply(.$pathways, function(x){
+#       str_trim(x, side = "left")
+#     }, character(1)))
+#saveRDS(keggCategory, file = here::here("output/keggCategory.rds"))
+keggCategory <- readRDS(here::here("output/keggCategory.rds"))
+keggCategory %>%
+  mutate_all(as.factor) %>%
+  datatable(filter = "top")
+```
+
+Irrelevant categories as shown below were filtered out:
+
+```{r}
+keggCategory %>%
+  dplyr::filter(subNumber %in% c("5.3", "5.4", "5.5", "5.6", "5.7", 
+                                  "6.3", "6.4", "6.5", "6.6", "6.8", "6.12")) %>%
+  pull(subcategory) %>%
+  unique()
+```
+
+```{r gsTokeep}
+gsTokeep <- keggCategory %>%
+    mutate(pathways = paste("kegg.", pathways, sep = ""))  %>%
+  dplyr::filter(pathways %in% names(gsTopology)) %>%
+  dplyr::filter(!subNumber %in% c("5.3", "5.4", "5.5", "5.6", "5.7",
+                                  "6.3", "6.4", "6.5", "6.6", "6.8", "6.12")) %>%
+    pull(pathways)
+#saveRDS(gsTokeep, file = here::here("output/kg_gsTokeep.rds"))
+gsTokeep <- readRDS(here::here("output/kg_gsTokeep.rds"))
+gsTopology <- gsTopology[names(gsTopology) %in% gsTokeep]
+```
+
+```{r}
+gsAnnotation_df <- keggCategory %>%
+     mutate(pathways = paste("kegg.", pathways, sep = ""))  %>%
+    dplyr::select(gs_name = pathways,
+                  category = subcategory)
+#save(gsAnnotation_df, file = here::here("data/gsAnnotation.rda"))
+```
+
+`r length(gsTopology)` KEGG pathways are kept after filtering.
+
+# sSNAPPY
+
+Weighted single-sample logFC (ssFC) were calculated within each sample. 
+```{r weightedFC_tumor}
+weightedFC_tumor <- sSNAPPY::weight_ss_fc(logCPM_tumor, tumor_sample, groupBy = "patient", treatColumn = "treat", sampleColumn = "name")
+```
+
+Raw single sample perturbation scores for each treated sample each KEGG pathway were calculated.
+
+```{r ssPertScore_tumor}
+genePertScore_tumor <- raw_gene_pert(weightedFC_tumor$weighted_logFC, gsTopology)
+ssPertScore_tumor <- pathway_pert(genePertScore_tumor, weightedFC_tumor$weighted_logFC)
+```
+
+Null distribution of perturbation scores were generated through sample permutation. 31 x 32 = 992 permuted pseudo-pairs were formed to compute permuted perturbation scores.
+
+```{r permutedScore_tumor}
+# set.seed(123)
+# permutedScore_tumor <- generate_permuted_scores(
+#     logCPM_tumor,
+#     gsTopology = gsTopology,
+#    weight = weightedFC_tumor$weight
+# )
+# write_rds(permutedScore_tumor, here::here("output/permutedscore_tumor.rds"))
+permutedScore_tumor <- read_rds(here::here("output/permutedscore_tumor.rds"))
+```
+
+Six random permutation-simulated null distributions were sampled and plotted. As expected, they are all very close to normally distribution.
+
+```{r hist_pl_tumor, fig.width=10, fig.height=5}
+pl <- permutedScore_tumor %>%
+    keep(~all(.!=0)) %>%
+    .[sample(seq_along(.), 6)] %>%
+    lapply(
+      function(x){
+        ggplot(mapping = aes(x)) + 
+          geom_histogram() +
+          xlab("Perturbation Score")
+      }
+    ) 
+plot_grid(plotlist = pl, nrow = 2)
+```
+
+## Sample-wise significance
+
+Raw perturbation scores were converted to robust z-scores based on the median and MAD derived from the null distributions. A two-side permutation p-value was computed for each z-score and corrected for multiple testings.
+
+There wasn't any pathway that was significantly perturbed on single-sample level among tumor samples.
+
+```{r normalisedScores_tumor}
+normalisedScores_tumor <- normalise_by_permu(permutedScore_tumor, ssPertScore_tumor)
+# saveRDS(normalisedScores_tumor, here::here("output/normalisedScores_tumor.rds"))
+normalisedScores_tumor %>%
+    dplyr::filter(adjPvalue < 0.05) 
+```
+
+
+## Average treatment-effect
+
+### PCA plots
+
+Correlations between the first three principle components of pathway activities and patients metadata were visualised below. As seen in the gene-level PCA, the differet tumour subtypes (i.e. IDC-like/ILC-like) is still the strongest confounding factor.
+
+```{r zmad_pca_tumor,  fig.cap= "*Correlations between the first three components of KEGG pathway activities and patients metadata among tumor samples. As seen in the gene-level PCA, the differet tumour subtypes (i.e. IDC-like/ILC-like) is still the strongest confounding factor.*"}
+zmad_pca_tumor <- normalisedScores_tumor %>%
+    bind_rows() %>%
+    dplyr::select(gs_name, robustZ, sample) %>%
+    pivot_wider(names_from = sample, values_from = robustZ) %>%
+    column_to_rownames("gs_name") %>%
+    replace(is.na(.), 0) %>%
+    t() %>%
+    prcomp() 
+zmad_pca_tumor$x %>%
+    as.data.frame() %>%
+    rownames_to_column("name") %>%
+    left_join(tumor_sample)   %>%
+    dplyr::select(PC1, PC2, PC3, Ptient = patient, 
+                  Treatment = treat, 
+                  Subtype = Diagnosis, 
+                  Age
+                  ) %>%
+    mutate_all(as.numeric) %>%
+    cor() %>% 
+    corrplot(
+        type = "lower", 
+        diag = FALSE, 
+        addCoef.col = "black", 
+        col = rev(COL2('RdBu', 200)),
+        addCoefasPercent = TRUE
+    )
+```
+
+
+```{r}
+new_diag_col <- qualitative_hcl(2, palette = "Dark 3") %>%
+    set_names(c("IDC-like", "ILC-like"))
+new_treat_col <- qualitative_hcl(4, palette = "Dynamic") %>%
+    set_names(levels(tumor_sample$treat))
+```
+
+
+### Fit models {.tabset}
+
+To make the results more interpretable biologically, `treatment` and `diagnosis` was combined into one co-factor to model treatment-level pathway activities with each tumour subtype.
+
+```{r fit_tumor}
+fit_tumor <- normalisedScores_tumor %>%
+    left_join(tumor_sample %>%
+                  dplyr::rename(
+                      sample = name
+                  )) %>%
+    mutate(group = paste(treat, Diagnosis, sep = "_"), 
+           group = as.factor(group)) %>%
+    split(f = .$gs_name) %>%
+    lapply(function(x)lm(robustZ ~ 0 + group, data = x))  %>%
+    lapply(summary)
+treat_sig_tumor <- sapply(names(fit_tumor), function(x){
+    fit_tumor[[x]]$coefficients %>%
+        as.data.frame() %>%
+        .[, c("t value" ,"Pr(>|t|)")] %>%
+        rownames_to_column("Comparison") %>%
+        dplyr::rename(`P-value` = `Pr(>|t|)`, 
+                      `t statistic` = `t value`) %>%
+        mutate(
+            Comparison = str_remove_all(Comparison, "group"), 
+            FDR = p.adjust(`P-value`, "fdr"), 
+            gs_name = x)}, 
+    simplify = FALSE) %>%
+    bind_rows() 
+```
+
+```{r}
+sig_tumor_ls <- treat_sig_tumor %>% 
+    dplyr::filter(FDR < 0.05) %>%
+    split(f = .$Comparison)
+```
+
+The pathways that were on average perturbed due to each treatment among tumor samples were:
+
+```{r treat_sig_tumor_DT}
+treat_sig_tumor %>% 
+    dplyr::filter(FDR < 0.05) %>%
+    mutate_at(vars(c("Comparison", "gs_name")), as.factor) %>%
+    mutate_if(is.numeric, sprintf, fmt = '%#.4f') %>%
+    mutate(
+        Direction = ifelse(`t statistic` < 0, "Inhibited", "Activation"), 
+        gs_name = str_remove_all(gs_name, "kegg.")) %>%
+    dplyr::select(
+        Comparison, `t statistic`, Direction,
+        `Gene-set name` = gs_name, 
+        FDR
+    ) %>%
+    datatable(
+        filter = "top", 
+        options = list(
+            columnDefs = list(list(targets = "Direction", visible = FALSE))
+        )
+    ) %>% 
+    formatStyle(
+        't statistic', 'Direction',
+        color = styleEqual(c("Inhibited", "Activation"), c('blue', 'red'))
+    )
+```
+
+The significantly perturbed pathways are labelled in black in the heatmap below:
+
+```{r hp_tumor, fig.width=10, fig.height=8, fig.cap="*Pathways that were significantly perturbed in at least one treatment & tissue type among tumor sample*"}
+gs2plot <- treat_sig_tumor %>%
+    # dplyr::filter(str_detect(Comparison, "infiltrating|invasive")) %>%
+    dplyr::filter(FDR < 0.05) %>%
+    pull(gs_name) %>%
+    unique()
+rowO <-  treat_sig_tumor %>%
+    dplyr::filter(gs_name %in% gs2plot) %>%
+    mutate(gs_name = str_remove_all(gs_name, "kegg.")) %>%
+    dplyr::select(-c("FDR", "P-value")) %>%
+    pivot_wider(names_from = Comparison, values_from = `t statistic`) %>%
+    replace(is.na(.),0) %>%
+    column_to_rownames("gs_name") %>%
+    dist() %>%
+    hclust() 
+treat_sig_tumor %>%
+   dplyr::filter(gs_name %in% gs2plot)  %>%
+    mutate(
+        Sig = ifelse(FDR < 0.05, TRUE, FALSE),
+        `t statistic` = round(`t statistic`, 2),
+        FDR = sprintf(FDR, fmt = '%#.4f'),
+        label = paste(`t statistic`, "\n(", FDR, ")", sep = ""),
+        gs_name = str_remove_all(gs_name, "kegg."), 
+        Type = ifelse(
+            str_detect(Comparison, "IDC"), "IDC-like", "ILC-like"
+        )
+    ) %>%
+    ggplot(aes(Comparison, 
+               factor(gs_name, levels = rowO$labels[rowO$order]))) +
+    geom_tile(aes(fill = `t statistic`)) +
+    geom_text(data = . %>% dplyr::filter(Sig), 
+              aes(label = label), size = 3, color = "black") +
+    scale_fill_distiller(palette = "RdBu", 
+                         limit = c(-5,5),
+                         name = "T-statistic") +
+    facet_grid(~Type, scales = "free", space =  "free") +
+    theme(
+        axis.title=element_blank(),
+        panel.grid = element_blank(),
+        # axis.ticks = element_blank(),
+        strip.text = element_text(size=14),
+        legend.key.size = unit(3, 'mm')
+    ) +
+    panel_border(remove = TRUE) 
+```
+
+# DE incorporate diagnosis
+
+We also re-performed the DE analysis with the predicted tumour subtypes incorporated. 
+
+```{r fit}
+dge_tumor$samples <- dge_tumor$samples %>%
+    mutate(
+        Diagnosis = as.character(Diagnosis),
+        Diagnosis = ifelse(
+            patient == "Tumor-8", "IDC-like",
+            Diagnosis
+        ),
+        Diagnosis = ifelse(
+            str_detect(Diagnosis, "invasive"),
+            "ILC-like", "IDC-like"),
+        group = paste(treat, Diagnosis, sep = "_")
+    )
+```
+
+```{r}
+alpha <- 0.05
+DE_byDiagnosis <- sapply(c("ILC-like", "IDC-like"), function(x){
+    sample <- dge_tumor$samples %>%
+        dplyr::filter(Diagnosis == x) %>%
+        pull(name)
+    dge_sub <- dge_tumor %>%
+        .[,colnames(.) %in% sample]
+    X <- model.matrix(~ 0 + patient + treat ,
+                      data = dge_sub$samples
+    ) %>%
+        set_colnames(str_remove_all(colnames(.), "treat")) %>%
+        .[,colSums(.) != 0]
+    dge_sub <- estimateDisp(dge_sub, design = X, robust = TRUE)
+    fit <- glmQLFit(dge_sub)
+    sapply(c("DHT", "E2", "E2+DHT"), function(y){
+        glmQLFTest(fit, coef = y) %>%
+            topTags(n = Inf) %>%
+            .[["table"]] %>%
+            as_tibble() %>%
+            mutate(
+                location = paste0(seqnames, ":", start, "-", end, ":", strand),
+                rankingStat = -sign(logFC)*log10(PValue),
+                signedRank = rank(rankingStat),
+                DE = FDR < alpha,
+                treatment = y,
+                Diagnosis = x
+            ) %>%
+            dplyr::select(
+                gene_id, gene_name, logCPM, logFC, PValue, FDR,
+                location, gene_biotype, entrezid, ave_tx_len, gc_content,
+                rankingStat, signedRank, DE, treatment, Diagnosis
+            )
+    }, simplify = FALSE) %>%
+        bind_rows()
+}, simplify = FALSE) 
+
+```
+
+But we were still unable to detect any gene passing the statistical threshold of FDR < 0.05 in any treatment group. 
+
+```{r topTables}
+lapply(DE_byDiagnosis, dplyr::filter, DE)
+```
+
+# Thesis figure
+
+Code used to generate figures for the thesis. 
+
+<!-- ```{r fig.width=24} -->
+<!-- gs2plot <- treat_sig_tumor %>% -->
+<!--     # dplyr::filter(str_detect(Comparison, "infiltrating|invasive")) %>% -->
+<!--     dplyr::filter(FDR < 0.05) %>% -->
+<!--     # group_by(gs_name) %>% -->
+<!--     # dplyr::filter(n() > 1) %>% -->
+<!--     pull(gs_name) %>% -->
+<!--     unique() -->
+<!-- rowO <-  treat_sig_tumor %>% -->
+<!--     dplyr::filter(gs_name %in% gs2plot) %>% -->
+<!--     mutate( -->
+<!--         gs_name = str_remove_all(gs_name, "kegg."), -->
+<!--          # gs_name = str_wrap(gs_name, 25) -->
+<!--         ) %>% -->
+<!--     dplyr::select(-c("FDR", "P-value")) %>% -->
+<!--     pivot_wider(names_from = Comparison, values_from = `t statistic`) %>% -->
+<!--     replace(is.na(.),0) %>% -->
+<!--     column_to_rownames("gs_name") %>% -->
+<!--     dist() %>% -->
+<!--     hclust()  -->
+<!-- library(ggh4x) -->
+<!-- strips <- strip_themed( -->
+<!--     background_x = elem_list_rect( -->
+<!--         fill = adjustcolor(new_diag_col, alpha.f = 0.5) -->
+<!--     ) -->
+<!-- ) -->
+
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- ssnappy_b <- treat_sig_tumor %>% -->
+<!--     dplyr::filter(gs_name %in% gs2plot)  %>% -->
+<!--     mutate( -->
+<!--         `t statistic` = round(`t statistic`, 2), -->
+<!--         Type = ifelse(str_detect(Comparison, "infiltrating"), "IDC-like", "ILC-like"), -->
+<!--         Comparison  = str_remove_all(Comparison, "_infiltrating|_invasive"), -->
+<!--         Comparison = factor(Comparison, levels = c("DHT", "E2+DHT", "E2")), -->
+<!--         label = case_when( -->
+<!--             FDR > 0.05 ~ "",  -->
+<!--             FDR < 0.05 ~ "*",  -->
+<!--             FDR < 0.005 ~ "**"), -->
+<!--         gs_name = str_remove_all(gs_name, "kegg."), -->
+<!--         # gs_name = str_wrap(gs_name, 25) -->
+<!--     ) %>% -->
+<!--     ggplot( -->
+<!--         aes( -->
+<!--             Comparison,  -->
+<!--             factor(gs_name, levels = rowO$labels[rowO$order]), -->
+
+<!--         )) + -->
+<!--     geom_tile(aes(fill = `t statistic`)) + -->
+<!--     geom_text(aes(label = label), size = 8, color = "black") + -->
+<!--     scale_fill_distiller(palette = "RdBu",  -->
+<!--                          limit = c(-5.1,5.1), -->
+<!--                          name = "t-statistic") + -->
+<!--     facet_wrap2(~Type, scales = "fixed",  -->
+<!--                 strip = strips  -->
+
+<!--     ) + -->
+<!--     theme( -->
+<!--         axis.title=element_blank(), -->
+<!--         panel.grid = element_blank(), -->
+<!--         text = element_text(size = 18), -->
+<!--         plot.margin = unit(rep(0, 4), "mm"), -->
+<!--         strip.text = element_text(size=24), -->
+<!--         # legend.key.size = unit(12, 'mm') -->
+<!--     ) + -->
+<!--     coord_fixed(0.4) -->
+<!-- # png( -->
+<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/ssnappy.png", -->
+<!-- #     width = 300, height =200, units='mm', res = 300 -->
+<!-- # ) -->
+<!-- # ssnappy_b -->
+<!-- # dev.off() -->
+<!-- ``` -->
+
+
+

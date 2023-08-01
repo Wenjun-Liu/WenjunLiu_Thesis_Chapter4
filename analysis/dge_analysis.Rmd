@@ -1,0 +1,795 @@
+---
+title: "Differential Gene Expression"
+author: "Wenjun Liu<br>Dame Roma Mitchell Cancer Research Laboratories<br>Adelaide Medical School<br>University of Adelaide"
+date: "`r format(Sys.Date(), '%d %B, %Y')`"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    autodep = TRUE,
+	echo = TRUE,
+	warning = FALSE,
+	message = FALSE
+)
+```
+
+```{r packages}
+library(tidyverse)
+library(yaml)
+library(scales)
+library(pander)
+library(glue)
+library(edgeR)
+library(AnnotationHub)
+library(ensembldb)
+library(cowplot)
+library(ggfortify)
+library(magrittr)
+library(cqn)
+library(ggrepel)
+library(DT)
+# library(variancePartition)
+library(BiocParallel)
+library(UpSetR)
+library(corrplot)
+library(singscore)
+library(msigdbr)
+library(broom)
+library(goseq)
+library(WGCNA)
+library(reactable)
+library(ggforce)
+```
+
+```{r options}
+panderOptions("table.split.table", Inf)
+panderOptions("big.mark", ",")
+theme_set(theme_bw())
+```
+
+```{r config}
+config <- here::here("config/config.yml") %>%
+  read_yaml()
+suffix <- paste0(config$tag)
+sp <- config$ref$species %>%
+  str_replace("(^[a-z])[a-z]*_([a-z]+)", "\\1\\2") %>%
+  str_to_title()
+```
+
+
+# Setup
+
+## Gene Annotations
+
+```{r ah}
+ah <- AnnotationHub() %>%
+  subset(rdataclass == "EnsDb") %>%
+  subset(str_detect(description, as.character(config$ref$release))) %>%
+  subset(genome == config$ref$build)
+stopifnot(length(ah) == 1)
+```
+
+```{r ensDb}
+ensDb <- ah[[1]]
+genesGR <- read_rds(here::here("output/genesGR.rds"))
+```
+
+Gene annotations were again loaded from Ensembl Release `r ensemblVersion(ensDb)`.
+The [previously defined](qc_aligned.html#Annotation_Setup) `GenomicRanges` object containing GC content and Gene Length was also loaded,
+containing information for `r comma(length(genesGR))` genes.
+
+## Sample Merging
+
+Dominant cell types (stroma, epithelial, ducts or fat) at the time of tissue collection were recorded and this was read in. 
+
+```{r init_cellType}
+init_cellType <- read_delim(here::here("config/sample_meta.txt"), delim = "\t")
+init_cellType <- init_cellType %>%
+    mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex("Stroma", ignore_case = T)), TRUE, FALSE), 
+           Epithelial = ifelse(str_detect(Dominant_cell_type, regex("Epithelial", ignore_case = T)), TRUE, FALSE), 
+           Ducts = ifelse(str_detect(Dominant_cell_type, regex("ducts", ignore_case = T)), TRUE, FALSE), 
+           Fat = ifelse(str_detect(Dominant_cell_type, regex("fat", ignore_case = T)), TRUE, FALSE), 
+           patient = str_replace(patient, "TH", "TH-")) %>%
+    pivot_longer(c("Stroma", "Epithelial", "Ducts", "Fat"),
+                 names_to = "cell_type", 
+                 values_to = "TF") %>%
+    mutate(cell_type = ifelse(TF, cell_type, NA)) %>%
+    dplyr::select(-c("TF", "Dominant_cell_type")) %>%
+    .[!is.na(.$cell_type),] %>%
+    chop("cell_type") %>%
+    mutate(cell_type = vapply(.$cell_type, function(x){
+        paste(x,collapse = ";")
+    }, character(1)))
+    
+```
+
+```{r samples}
+samples <- config$samples %>%
+  here::here() %>%
+  read_tsv() %>%
+    left_join(init_cellType) %>%
+  mutate(
+    Filename = paste0(sample, ".r_1"), 
+    condition = ifelse(Tumor, 
+                       paste("Tumor", treat, sep = "_"), 
+                       paste("Normal", treat, sep = "_")), 
+    patient = vapply(.$patient, function(x){str_split(x, "-")[[1]][2]}, character(1)), 
+    patient = ifelse(Tumor, 
+                       paste("Tumor", patient, sep = "-"), 
+                       paste("Normal",patient, sep = "-")), 
+    desc = paste(patient, treat, sep = " ")
+  ) %>%
+  dplyr::select(-c("name", "sample")) %>%
+  dplyr::rename(name = desc) %>%
+  mutate_if(
+    function(x){length(unique(x)) < length(x)},
+    as.factor
+  ) %>%
+  mutate(
+    treat = relevel(treat, ref = "Veh")
+  )
+```
+
+
+Sample metadata was split to a normal and a primary malignant tumour group. 
+
+```{r mergedSamples}
+mergedSamples <- samples %>%
+  group_by(name, patient, treat, Tumor, cell_type, Tissue_type, Age, Diagnosis) %>%
+  tally()
+normal_sample <- mergedSamples %>%
+  dplyr::filter(Tumor == FALSE) %>%
+    droplevels()
+tumor_sample <- mergedSamples %>%
+  dplyr::filter(Tumor == TRUE) %>%
+    droplevels()
+```
+
+
+While we have tumours collected from 8 patients and 4 treatment arms, one DHT-treated sample was lost (i.e Tumor -8). For all downstream analyses, we will focus on the 31 ER-positive primary malignant tumours. 
+
+```{r tabSamples}
+pander(
+  mergedSamples %>%
+      dplyr::filter(Tumor == TRUE),
+  caption = "*Summary of sequencing total runs for all tumour samples*"
+)
+```
+
+This data set is slightly unique in that samples were sequenced across multiple lanes and flowcells.
+Metadata was re-organised to enable summarising of counts across the multiple sequencing runs obtained for every sample.
+The [initial PCA](qc_aligned.html#pca) showed that variability between replicates and flowcells was dwarfed by variability between samples and whether it was tumor.
+As such, all counts were able to be merged to give a single set of counts for each individual sample.
+
+```{r set_cols}
+treat_cols <- c(
+  Veh = rgb(0.7, 0.7, 0.7),
+  DHT = rgb(0.8, 0.2, 0.2),
+  E2 = rgb(0.2, 0.2, 0.8),
+  `E2+DHT` = rgb(1, 0.4, 1)
+)
+patient_cols <- hcl.colors(
+  n = length(levels(tumor_sample$patient)), 
+  palette = "Spectral"
+  ) %>%
+  setNames(levels(tumor_sample$patient))
+age_cols <- hcl.colors(
+  n = 3, 
+  palette = "Zissou 1"
+  ) %>%
+  setNames(c("<30", "<50", ">=50"))
+```
+
+```{r treat_shapes}
+treat_shapes <- c(
+  Veh = 1,
+  DHT = 19,
+  E2 = 15,
+  `E2+DHT` = 17
+)
+```
+
+
+## Count Data
+
+```{r counts} 
+# counts <- here::here("data/aligned/counts/counts.out.gz") %>%
+#   gzfile() %>%
+#   read_tsv(comment = "#") %>%
+#   dplyr::select(Geneid, ends_with("bam")) %>%
+#   rename_at(vars(ends_with("bam")), dirname) %>%
+#   rename_all(basename) %>%
+#   column_to_rownames("Geneid")
+```
+
+```{r mergedCounts}
+# mergedCounts <- counts %>%
+#   rownames_to_column("gene_id") %>%
+#   pivot_longer(
+#     cols = -gene_id,
+#     names_to = "Filename",
+#     values_to = "counts"
+#   ) %>%
+#   left_join(samples, by = "Filename") %>%
+#   group_by(
+#     gene_id, name, patient, treat, Tumor) %>%
+#   summarise(counts = sum(counts), .groups = "drop") %>%
+#   pivot_wider(
+#     id_cols = gene_id,
+#     values_from = counts,
+#     names_from = name
+#   ) %>%
+#   column_to_rownames("gene_id")
+# saveRDS(mergedCounts, here::here("data/mergedCounts.rds"))
+mergedCounts <- readRDS(here::here("data/mergedCounts.rds"))
+```
+
+```{r rm_counts}
+rm(counts)
+rm(samples)
+gc()
+```
+
+
+```{r genes2Keep, results='hide'}
+minCPM <- 1.5
+minSamples_tumor <- 8
+genes2Keep_tumor <- mergedCounts[,str_subset(colnames(mergedCounts), "Tumor")] %>%
+  edgeR::cpm() %>%
+  is_greater_than(minCPM) %>%
+  rowSums() %>%
+  is_weakly_greater_than(minSamples_tumor)
+```
+
+$>$ `r minCPM` counts per million (CPM) were required to observed in $\geq$ `r minSamples_tumor` samples among tumor samples for a gene to be considered as detected.
+
+Of the `r comma(nrow(mergedCounts))` genes contained in the annotation for this release, `r comma(sum(!genes2Keep_tumor))` genes were removed as failing this criteria for detection among tumor tissues, leaving `r comma(sum(genes2Keep_tumor))` genes for downstream analysis. 
+
+```{r plotDensities, fig.height=5,fig.width=13, fig.cap="*Distributions of logCPM values on merged counts, A) before and B) after filtering of undetectable genes for the 31 tumor sampels. Some differences between patients were noted.*"}
+a2 <- mergedCounts[,str_subset(colnames(mergedCounts), "Tumor")] %>%
+  edgeR::cpm(log = TRUE) %>%
+  as.data.frame() %>%
+  rownames_to_column("gene_id") %>%
+  as_tibble() %>%
+  pivot_longer(
+    cols = contains("Tumor"),
+    names_to = "name",
+    values_to = "logCPM"
+  ) %>%
+  left_join(tumor_sample) %>%
+  ggplot(aes(logCPM, stat(density), colour = patient, linetype = treat)) +
+  geom_density() +
+  scale_colour_manual(values= patient_cols[str_subset(names(patient_cols), "Tumor")]) +
+  labs(
+    y = "Density",
+    colour = "Patient",
+    linetype = "Treatment"
+  )
+b2 <- mergedCounts[genes2Keep_tumor,str_subset(colnames(mergedCounts), "Tumor")] %>%
+  edgeR::cpm(log = TRUE) %>%
+  as.data.frame() %>%
+  rownames_to_column("gene_id") %>%
+  as_tibble() %>%
+  pivot_longer(
+    cols = contains("Tumor"),
+    names_to = "name",
+    values_to = "logCPM"
+  ) %>%
+  left_join(tumor_sample) %>%
+  ggplot(aes(logCPM, stat(density), colour = patient, linetype = treat)) +
+  geom_density() +
+  scale_colour_manual(values= patient_cols[str_subset(names(patient_cols), "Tumor")]) +
+  labs(
+    y = "Density",
+    colour = "Patient",
+    linetype = "Treatment"
+  )
+plot_grid(
+    a2 + theme(legend.position = "none"), 
+    b2, 
+    labels = c("A", "B"),
+    ncol = 2, 
+    rel_widths = c(0.4, 0.6))
+```
+
+A `dgeList `was formed for the tumour samples.
+
+```{r dge}
+dge_tumor <- mergedCounts[genes2Keep_tumor,colnames(mergedCounts) %in% tumor_sample$name] %>%
+  DGEList(
+    samples = tumor_sample %>%
+      as.data.frame() %>%
+      set_rownames(.$name) %>%
+      .[,colnames(.)],
+    group = tumor_sample %>%
+      as.data.frame() %>%
+      set_rownames(.$name) %>%
+      .[,colnames(.)] %>%
+      pull(treat),
+    genes = genesGR[rownames(.)]
+  ) %>%
+  calcNormFactors()
+```
+
+
+# QC
+
+## Library Sizes
+
+```{r plotLibSizes, fig.height=6, fig.width = 10, fig.cap = "*Library sizes of all tumour samples after removal of undetectable genes. The common-use minimum library size of 10 million reads is shown as a dashed line.*"}
+dge_tumor$samples %>%
+    ggplot(aes(treat, lib.size, fill = treat)) +
+    geom_col() +
+    geom_hline(yintercept = 1e7, linetype = 2) +
+    facet_wrap(~patient, ncol = 5) +
+    scale_y_continuous(
+        labels = comma, expand = expansion(c(0, 0.05))
+    ) +
+    scale_fill_manual(values= treat_cols) +
+    labs(x = "Sample Name", y = "Library Size", fill = "Treatment")  +
+    theme(legend.position = c(11/12, 1/6))
+```
+
+Given that previous work had only assessed the libraries prior to merging, the library sizes were checked after merging patient sequencing runs.
+The median library size was found to be `r round(median(colSums(mergedCounts[genes2Keep_tumor,] ))/1e6, 1)` million reads for tumor samples which are just above the common-use minimum recommendation of 10 million reads/sample.
+
+
+## PCA: Pre Normalisation
+
+A PCA was performed on all the tumour samples. 
+
+```{r pca}
+pca_tumor <- dge_tumor %>%
+  edgeR::cpm(log = TRUE) %>%
+  t() %>%
+  prcomp() 
+```
+
+No common direction based on treatment appears evident with each patient, and great inter-patient heterogenity was observed even among the control samples.
+
+```{r plotPCA_tumor, fig.height=6, fig.width=16, fig.cap="*PCA on logCPM from merged counts for (a) each of, (b) all of the 8 tumor patients. No common direction based on treatment appears evident with each patient, and great inter-patient heterogenity was observed even among the control samples.*"}
+g1 <- pca_tumor %>%
+    autoplot(
+        data = dge_tumor$samples, 
+        x = 1, y = 2,
+        colour = "treat", 
+        shape = "treat",
+        size = 3
+    ) +
+    facet_wrap(~patient, ncol = 4) +
+    scale_colour_manual(values= treat_cols) +
+    scale_shape_manual(values = treat_shapes) +
+    labs(
+        colour = "Treatment",
+        shape = "Treatment"
+    )
+g2 <- pca_tumor %>%
+    autoplot(
+        data = dge_tumor$samples, 
+        x = 1, y = 2,
+        colour = "treat", 
+        shape = "treat",
+        size = 3
+    ) +
+    scale_colour_manual(values= treat_cols) +
+    scale_shape_manual(values = treat_shapes) +
+    labs(
+        colour = "Treatment",
+        shape = "Treatment"
+    )
+plot_grid(g1, g2, 
+          ncol = 2, 
+          rel_widths = c(1.8,1), 
+          scale = c(1, 0.8), 
+          labels = c("(a)", "(b)"))
+```
+
+## Checks for GC and Length bias
+
+The impact of GC content or length bias was assessed as a possible source.
+
+Genes were divided in 10 approximately equal sized bins based on increasing length, and 10 approximately equal sized bins based on increasing GC content, with the final GC/Length bins being the combination 100 bins using both sets.
+The contribution of each gene to PC1 and PC2 was assessed and a t-test performed on each bin.
+This tests 
+
+$$
+H_0: \mu = 0 \text{ against } H_A: \mu \neq 0
+$$
+
+where $\mu$ represents the true contribution to PC1 of all genes in that bin.
+
+If any bin makes a contribution to PC1 the mean will be clearly non-zero, whilst if there is no contribution the mean will be near zero.
+In this way, the impact of gene length and GC content on variance within the dataset can be assessed.
+
+As seen below, the contribution of GC content and gene length to PC1 is very clear in tumor samples, with a smaller contribution being evident across PC1. As a result, Conditional Quantile Normalisation (`CQN`) is recommended in preference to the more common TMM normalisation.
+
+```{r plotPCA_GC_Length, fig.height=5,fig.width=8, fig.cap = "*Contribution of each GC/Length Bin to PC1 and PC2 among tumor samples. Fill colours indicate the t-statistic, with tranparency denoting significance as -log10(p), using Bonferroni-adjusted p-values. The number of genes in each bin is indicated by the circle size. The clear pattern across PC1 is unambiguous.*"}
+dge_tumor$genes %>%
+  dplyr::select(gene_id, ave_tx_len, gc_content) %>%
+  mutate(
+    GC = cut(
+      x = gc_content,
+      labels = seq_len(10),
+      breaks = quantile(gc_content, probs = seq(0, 1, length.out = 11)),
+      include.lowest = TRUE
+    ),
+    Length = cut(
+      x = ave_tx_len,
+      labels = seq_len(10),
+      breaks = quantile(ave_tx_len, probs = seq(0, 1, length.out = 11)),
+      include.lowest = TRUE
+    ),
+    bin = paste(GC, Length, sep = "_"),
+    PC1 = pca_tumor$rotation[gene_id, "PC1"],
+    PC2 = pca_tumor$rotation[gene_id, "PC2"]
+  ) %>%
+  pivot_longer(
+    cols = c("PC1", "PC2"),
+    names_to = "PC",
+    values_to = "value"
+  ) %>%
+  group_by(PC, GC, Length, bin) %>%
+  summarise(
+    Size = n(),
+    mean = mean(value),
+    sd = sd(value),
+    t = t.test(value)$statistic,
+    p = t.test(value)$p.value,
+    adjP = p.adjust(p, method = "bonf")
+  ) %>%
+  ggplot(
+    aes(Length, GC, colour = t, alpha = -log10(adjP), size = Size)
+  ) +
+  geom_point() +
+  facet_wrap(~PC) +
+  scale_colour_gradient2() +
+  scale_size_continuous(range = c(1, 10)) +
+  labs(alpha = expression(paste(-log[10], p))) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "bottom"
+  ) 
+```
+
+
+## Normalisation
+
+```{r cqn}
+cqNorma_tumor <- with(
+  dge_tumor,
+  cqn(
+    counts= counts,
+    x = genes$gc_content,
+    lengths = genes$ave_tx_len
+  )
+)
+dge_tumor$offset <- cqNorma_tumor$glm.offset
+logCPM_tumor <- cqNorma_tumor$y + cqNorma_tumor$offset
+# saveRDS(dge_tumor, here::here("output/dge_tumor.rds"))
+# saveRDS(logCPM_tumor, here::here("output/logCPM_tumor.rds"))
+```
+
+```{r plotCQN, fig.height= 5, fig.width=10, fig.cap = "*Model fits used when applying CQN in all tumor samples. The divergent samples previously noted on the PCA are again quite divergent here. In particular, the long genes with high GC content appear to be where the primary differences are found, in keeping with the previous PCA analysis.*"}
+a2 <- cqNorma_tumor$func1 %>%
+    as.data.frame() %>%
+    mutate(x = cqNorma_tumor$grid1) %>%
+    pivot_longer(
+        cols = any_of(colnames(dge_tumor)),
+        names_to = "name",
+        values_to = "QR fit"
+    ) %>%
+    left_join(dge_tumor$samples) %>%
+    ggplot(
+        aes(x, `QR fit`, colour = patient, group = name, linetype = treat)
+    ) +
+    geom_line() +
+    labs(x = "GC content", colour = "Patient", linetype = "Treatment")
+b2 <- cqNorma_tumor$func2 %>%
+    as.data.frame() %>%
+    mutate(x = cqNorma_tumor$grid2) %>%
+    pivot_longer(
+        cols = any_of(colnames(dge_tumor)),
+        names_to = "name",
+        values_to = "QR fit"
+    ) %>%
+    left_join(dge_tumor$samples) %>%
+    ggplot(
+        aes(x, `QR fit`, colour = patient, group = name, linetype = treat)
+    ) +
+    geom_line() +
+    labs(
+        x = expression(paste(log[10], " Gene Length (kb)")),
+        colour = "Patient", linetype = "Treatment"
+    )
+plot_grid(
+        a2 + theme(legend.position = "none"), 
+        b2 + theme(legend.position = "none"),
+        nrow = 1)
+```
+
+```{r pcaPost}
+pcaPost_tumor <- logCPM_tumor %>%
+  t() %>%
+  prcomp() 
+```
+
+The strong inter-patient heterogeneity is sitll evident even post-normalization. 
+
+```{r plotPcaPost_tumor, fig.height=6, fig.width=16, fig.cap="*PCA on logCPM after performing CQN for (a) each of, (b) all of the 8 tumor patients. No common direction based on treatment appears evident with each patient. Great inter-patient heterogenity still exists even post-normalisation.*"}
+g1 <- pcaPost_tumor %>%
+    autoplot(
+        data = dge_tumor$samples, 
+        x = 1, y = 2,
+        colour = "treat", 
+        shape = "treat",
+        size = 3
+    ) +
+    facet_wrap(~patient, ncol = 4) +
+    scale_colour_manual(values= treat_cols) +
+    scale_shape_manual(values = treat_shapes) +
+    labs(
+        colour = "Treatment",
+        shape = "Treatment"
+    )
+g2 <- pcaPost_tumor %>%
+    autoplot(
+        data = dge_tumor$samples, 
+        x = 1, y = 2,
+        colour = "treat", 
+        shape = "treat",
+        size = 3
+    ) +
+    scale_colour_manual(values= treat_cols) +
+    scale_shape_manual(values = treat_shapes) +
+    labs(
+        colour = "Treatment",
+        shape = "Treatment"
+    )
+# pdf(file = here::here("figure/pcaPostNor_tumor.pdf"),
+#     width = 12,
+#     height = 5)
+plot_grid(g1, g2, 
+          ncol = 2, 
+          rel_widths = c(1.3,1), 
+          scale = c(0.9, 0.8), 
+          labels = c("(a)", "(b)"))
+# dev.off()
+```
+
+```{r plotPCA_GC_post, fig.height=4,fig.width=8, fig.cap = "*Contributions of gene length and GC content to PC1 shown both before and after CQN among tumor samples.. The strong patterns seen before normalisation have clearly been reduced. Fill colours indicate the t-statistic, with tranparency denoting significance as -log10(p), using Bonferroni-adjusted p-values.*"}
+dge_tumor$genes %>%
+  dplyr::select(gene_id, ave_tx_len, gc_content) %>%
+  mutate(
+    GC = cut(
+      x = gc_content,
+      labels = seq_len(10),
+      breaks = quantile(gc_content, probs = seq(0, 1, length.out = 11)),
+      include.lowest = TRUE
+    ),
+    Length = cut(
+      x = ave_tx_len,
+      labels = seq_len(10),
+      breaks = quantile(ave_tx_len, probs = seq(0, 1, length.out = 11)),
+      include.lowest = TRUE
+    ),
+    bin = paste(GC, Length, sep = "_"),
+    `pre-CQN` = pca_tumor$rotation[gene_id, "PC1"],
+    `post-CQN` = pcaPost_tumor$rotation[gene_id, "PC1"]
+  ) %>%
+  pivot_longer(
+    cols = c("pre-CQN", "post-CQN"),
+    names_to = "status",
+    values_to = "value"
+  ) %>%
+  mutate(status = factor(status, levels = c("pre-CQN", "post-CQN"))) %>%
+  group_by(status, GC, Length, bin) %>%
+  summarise(
+    Size = n(),
+    mean = mean(value),
+    sd = sd(value),
+    t = t.test(value)$statistic,
+    p = t.test(value)$p.value,
+    FDR = p.adjust(p, method = "bonf")
+  ) %>%
+  ggplot(
+    aes(Length, GC, colour = t, alpha = -log10(FDR), size = Size)
+  ) +
+  geom_point() +
+  facet_wrap(~status) +
+  scale_colour_gradient2() +
+  scale_size_continuous(range = c(1, 10)) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "bottom"
+  )
+```
+
+## Heterogeneity
+
+Because of the high inter-patient heterogeneity observed, correlation between the first three PCA components and sample metadata was tested. 
+
+As shown in the figure below, pathologist's labels on the tumours strongly correlated with the first three PCA components.
+
+```{r, fig.width= 14, fig.height=5, fig.cap="*Correlations between the first three principal components and sample metadata in tumor samples. Treatment, patient, and pathologist diagnosis were converted to an ordered categorical variable for the purposes of visualisation.*"}
+pcaPost_tumor$x %>%
+    as.data.frame() %>%
+    rownames_to_column("name") %>%
+    left_join(tumor_sample) %>%
+    dplyr::select(PC1, PC2, PC3, patient, treat, Diagnosis) %>%
+    dplyr::rename(
+                  Treatment = treat, 
+                  Patient = patient
+                  ) %>%
+    mutate_all(as.numeric) %>%
+    cor() %>% 
+    corrplot(
+        type = "lower", 
+        diag = FALSE, 
+        addCoef.col = 1, 
+        col = rev(COL2('RdBu', 200)),
+        addCoefasPercent = TRUE
+    )
+```
+
+
+# DE Analysis
+
+```{r formatP}
+formatP <- function(p, m = 0.0001){
+out <- rep("", length(p))
+out[p < m] <- sprintf("%.2e", p[p<m])
+out[p >= m] <- sprintf("%.4f", p[p>=m])
+out
+}
+```
+
+Average treatment responses among tumor samples were tested through fitting quasi-likelihood negative binomial GLMs through `edgeR`.
+
+```{r fit_tumor}
+X_tumor <- model.matrix(~ 0 + patient + treat, data = dge_tumor$samples %>%
+                            droplevels()) %>%
+  set_colnames(str_remove_all(colnames(.), "treat"))
+dge_tumor <- estimateDisp(dge_tumor, design = X_tumor, robust = TRUE)
+fit_tumor <- glmQLFit(dge_tumor)
+colnames(X_tumor) <- make.names(colnames(X_tumor))
+contrast_tumor <- makeContrasts(DHT = DHT,
+                          E2 = E2,
+                          `E2+DHT` = E2.DHT,
+                          `E2+DHTvsDHT` = E2.DHT - DHT,
+                          `E2+DHTvsE2` = E2.DHT - E2,
+                          levels = X_tumor)
+```
+
+```{r topTables_tumor}
+alpha <- 0.05
+topTables_tumor <- colnames(contrast_tumor) %>%
+    str_subset("patient", TRUE) %>%
+    sapply(function(x){
+        glmQLFTest(fit_tumor, contrast = contrast_tumor[,x]) %>%
+            topTags(n = Inf) %>%
+            .[["table"]] %>%
+            as_tibble() %>%
+            mutate(
+                coef = x,
+                location = paste0(seqnames, ":", start, "-", end, ":", strand),
+                rankingStat = -sign(logFC)*log10(PValue),
+                signedRank = rank(rankingStat),
+                DE = FDR < alpha
+            ) %>%
+            dplyr::select(
+                gene_id, gene_name, logCPM, logFC, PValue, FDR, coef,
+                location, gene_biotype, entrezid, ave_tx_len, gc_content,
+                rankingStat, signedRank, DE
+            )
+    },
+    simplify = FALSE)
+# saveRDS(topTables_tumor, here::here("output/topTables_tumor.rds"))
+```
+
+No DEG was detected in any of the treatment or contrast group:
+    
+```{r nDE_tumor}
+topTables_tumor %>%
+    lapply(dplyr::filter, FDR < alpha) %>%
+    vapply(nrow, integer(1)) %>%
+    set_names(c("DHT vs Veh", "E2 vs Veh","E2+DHT vs Veh", "E2+DHT vs DHT", "E2+DHT vs E2" )) %>%
+    pander()
+```
+
+The full DE analysis results are available in the table below:
+```{r nDE_tumor_DT}
+topTables_tumor %>%
+    # lapply(dplyr::filter, FDR < alpha) %>%
+    lapply(dplyr::select, gene_name, logFC, FDR, coef, DE) %>%
+    bind_rows() %>%
+    mutate_if(is.numeric, signif, 2) %>%
+    mutate_at(vars(contains(c("gene_name", "coef"))), as.factor) %>%
+    mutate(Direction = ifelse(logFC < 0, "Down", "Up")) %>%
+    dplyr::rename(`Gene name` = gene_name, 
+                  `Comparision` = coef) %>%
+    datatable(
+        filter = "top",
+        options = list(scrollY = '5500px')) %>% 
+    formatStyle(
+        c("logFC", "Direction"),
+        color = styleEqual(c("Down", "Up"), c('blue', 'red'))
+    )
+```
+
+
+# Thesis figure
+
+Code used to generate figures for the thesis.
+
+```{r, fig.width=12, fig.height=10}
+tumor_sample <- tumor_sample %>%
+    .[match(rownames(pcaPost_tumor$x), .$name),]
+pcaPost_tumor_df <- pcaPost_tumor$x %>%
+    as.data.frame() %>%
+    rownames_to_column("name") %>%
+    left_join(
+        tumor_sample
+    )
+thesis_1b <- pcaPost_tumor_df %>%
+    ggplot(
+        aes(PC1, PC2)
+    ) +
+    geom_point(aes( color = patient, shape = treat), 
+               size = 4) +
+    scale_shape_manual(values = treat_shapes) +
+    labs(
+        colour = "Patient",
+        fill = "Patient",
+        shape = "Treatment"
+    ) +
+    geom_mark_ellipse(
+        aes(
+            label = patient,
+            fill = patient
+        ), 
+        label.fontsize = 24
+    ) +
+    guides(color = FALSE, fill = FALSE) +
+    theme(
+        panel.grid = element_blank(), 
+        text = element_text(size = 40)
+    )
+# png("~/PhD_thesis/draft_figure/chapter_04/Figure1B.png",
+#     width = 1200,
+#     height = 600)
+# thesis_1b
+# dev.off()
+```
+
+```{r}
+# png("~/PhD_thesis/draft_figure/chapter_04/Figure1C.png",
+#     width = 1000,
+#     height = 1000)
+# pcaPost_tumor$x %>%
+#    as.data.frame() %>%
+#    rownames_to_column("name") %>%
+#    left_join(tumor_sample) %>%
+#    dplyr::select(PC1, PC2, PC3, patient, treat, Age, Diagnosis) %>%
+#    dplyr::rename(
+#                  Treatment = treat,
+#                  Patient = patient,
+#                  `Pathology Diagnosis` = Diagnosis
+#                  ) %>%
+#    mutate(Age = as.numeric(as.character(Age)),
+#           across(-"Age", as.numeric)) %>%
+#    cor() %>%
+#    corrplot(
+#        type = "lower",
+#        diag = FALSE, addCoef.col = "black",
+#        col = rev(COL2('RdBu', 200)),
+#        addCoefasPercent = TRUE, 
+#        number.cex = 2, 
+#        tl.cex = 2, 
+#        tl.col = "black", 
+#        cl.cex = 2
+#    )
+# dev.off()
+```

@@ -1,0 +1,25 @@
+---
+title: "Home"
+author: "Wenjun Liu<br>Dame Roma Mitchell Cancer Research Laboratories<br>Adelaide Medical School<br>University of Adelaide"
+date: "`r format(Sys.Date(), '%d %B, %Y')`"
+site: workflowr::wflow_site
+output:
+  workflowr::wflow_html:
+    toc: false
+editor_options:
+  chunk_output_type: console
+---
+
+RNA-Seq data from PDE derived from 17 normal and 8 primary ER-positive BC donors.
+
+- PDEs were treated with Estrogen, DHT, Estrogen + DHT or with Empty Vehicle.
+- Sequencing was performed by the Genomics Core Facility in Cambridge (CRUK CI)
+- Sequencing data was generated on 19th June, 2013 (20131906) 
+
+As seen in the menus above, pre-processing was performed using an automated `snakemake` workflow, 
+with subsequent analysis performed manually in R.
+
+While the whole study contained both non-malignant and primary ER-positive tumour samples, 
+they were not from the same cohort of patients hence are not directly comparable. 
+The analyses presented in this repository only focus on the tumour samples except 
+for the quality control steps, which were performed on all samples. 
