@@ -811,6 +811,11 @@ HIF_box <- ssFC_tumor_df %>%
         gene_name %in% c("HIF1A", "SLC2A1", "MTOR" , "RPS6"), 
         treat == "DHT"
         ) %>%
+    mutate(
+        Diagnosis = factor(Diagnosis, levels = c(
+            "IDC-like", "ILC-like"
+        ))
+    ) %>%
     ggplot(
         aes(Diagnosis, ssFC, fill = Diagnosis)
     ) +
@@ -1134,368 +1139,351 @@ vasiliou_box
 
 # Thesis figures
 
-<!-- ## network -->
-
-<!-- ```{r} -->
-<!-- set.seed(123) -->
-<!-- network_dht <- treat_tumor_dht %>% -->
-<!--     mutate( -->
-<!--         Status = ifelse(`t statistic` < 0, "Inhibited", "Activated")) %>% -->
-<!--     dplyr::filter( -->
-<!--         Comparison == "DHT_infiltrating", -->
-<!--         FDR < 0.05 -->
-<!--     ) %>% -->
-<!--     plot_community( -->
-<!--         gsTopology = gsTopology, -->
-<!--         colorBy = "Status", -->
-<!--         communityMethod = "label_prop", -->
-<!--         lb_size = 4, -->
-<!--         label.fontsize = 14 -->
-<!--     ) + -->
-<!--     scale_color_manual( -->
-<!--         values = c("Inhibited" = "navyblue", "Activated" = "darkred"), -->
-<!--          name = "Pathway Status" -->
-<!--     ) + -->
-<!--     scale_fill_discrete_divergingx(palette = "Fall") + -->
-<!--     guides(fill = FALSE) + -->
-<!--     theme( -->
-<!--         panel.border  = element_blank(), -->
-<!--         legend.key.size = unit(10, "mm"), -->
-<!--         legend.text = element_text(size = 12), -->
-<!--         legend.title = element_text(size = 14), -->
-<!--         legend.margin=margin(0,0,0,0) -->
-<!--     ) -->
-<!-- png( -->
-<!--     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/network_dht.png", -->
-<!--     width = 250, height =200, units='mm', res = 300 -->
-<!-- ) -->
-<!-- network_dht -->
-<!-- dev.off() -->
-<!-- ``` -->
-
-<!-- ## Apoptosis -->
-
-<!-- ```{r} -->
-<!-- p1 <- plot_gene_contribution( -->
-<!--     Apop_genePert %>% -->
-<!--         .[rownames(.) %in% Apop_gene, colnames(.) %in% ductal_DHT_sample], -->
-<!--     filterBy = "max.abs", -->
-<!--     annotation_df = anno_df_Apop, -->
-<!--     mapEntrezID = entrez2name, -->
-<!--     topGene = 10, -->
-<!--     annotation_colors = list( -->
-
-<!--         `Z Range` = setNames( -->
-<!--             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Apop$`Z Range`))), -->
-<!--             levels(anno_df_Apop$`Z Range`) -->
-<!--         )), -->
-<!--     color = rev(divergex_hcl(100, palette = "RdBu")), -->
-<!--     breaks = seq(-0.00012, 0.00012, length.out = 100) -->
-<!--     ) %>% -->
-<!--     as.ggplot() -->
-<!-- p2 <- apop_box -->
-<!-- apop_DHT <- (( p1 | p2) + -->
-<!--                   plot_layout(widths = c(0.2, 0.2))) + -->
-<!--     plot_annotation(tag_levels = "A")  & -->
-<!--     theme( -->
-<!--         plot.tag = element_text(size = 22, face = "bold" ), -->
-<!--         text = element_text(size = 14) -->
-<!--     ) -->
-<!-- png( -->
-<!--     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/apop_DHT.png", -->
-<!--     width = 400, height =230, units='mm', res = 300 -->
-<!-- ) -->
-<!-- apop_DHT -->
-<!-- dev.off() -->
-<!-- ``` -->
-
-<!-- ## Cell Cyle -->
-
-<!-- ```{r} -->
-<!-- # p1 <- plot_gene_contribution( -->
-<!-- #     CC_genePert %>% -->
-<!-- #         .[rownames(.) %in% CC_gene, colnames(.) %in% ductal_DHT_sample], -->
-<!-- #     annotation_df = anno_df_CC, -->
-<!-- #     mapEntrezID = entrez2name, -->
-<!-- #     topGene = length(CC_gene), -->
-<!-- #     annotation_colors = list( -->
+<!-- # <!-- ## network --> -->
 <!-- # -->
-<!-- #         `Z Range` = setNames( -->
-<!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_CC$`Z Range`))), -->
-<!-- #             levels(anno_df_CC$`Z Range`) -->
-<!-- #         )), -->
-<!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), -->
-<!-- #     breaks = seq(-0.00085, 0.00085, length.out = 100), -->
-<!-- #     cutree_rows = 2, -->
-<!-- #     ) %>% -->
-<!-- #     as.ggplot() -->
-<!-- # p2 <- CC_box -->
-<!-- # CC_DHT <- (( p1 | p2) + -->
-<!-- #                   plot_layout(widths  = c(0.4, 0.2))) + -->
-<!-- #     plot_annotation(tag_levels = "A")  & -->
-<!-- #     theme( -->
-<!-- #         plot.tag = element_text(size = 22, face = "bold" ), -->
-<!-- #         text = element_text(size = 14) -->
-<!-- #     ) -->
-<!-- # png( -->
-<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/CC_DHT.png", -->
-<!-- #     width = 300, height =180, units='mm', res = 300 -->
-<!-- # ) -->
-<!-- # CC_DHT -->
-<!-- # dev.off() -->
-<!-- ``` -->
-
-<!-- ## p53 signalling -->
-
-<!-- ```{r} -->
-<!-- # p1 <- plot_gene_contribution( -->
-<!-- #     p53_genePert %>% -->
-<!-- #         .[rownames(.) %in% p53_gene, colnames(.) %in% ductal_DHT_sample], -->
-<!-- #     annotation_df = anno_df_p53, -->
-<!-- #     mapEntrezID = entrez2name, -->
-<!-- #     topGene = length(p53_gene), -->
-<!-- #     annotation_colors = list( -->
+<!-- # <!-- ```{r} --> -->
+<!-- # <!-- set.seed(123) --> -->
+<!-- # <!-- network_dht <- treat_tumor_dht %>% --> -->
+<!-- # <!--     mutate( --> -->
+<!-- # <!--         Status = ifelse(`t statistic` < 0, "Inhibited", "Activated")) %>% --> -->
+<!-- # <!--     dplyr::filter( --> -->
+<!-- # <!--         Comparison == "DHT_infiltrating", --> -->
+<!-- # <!--         FDR < 0.05 --> -->
+<!-- # <!--     ) %>% --> -->
+<!-- # <!--     plot_community( --> -->
+<!-- # <!--         gsTopology = gsTopology, --> -->
+<!-- # <!--         colorBy = "Status", --> -->
+<!-- # <!--         communityMethod = "label_prop", --> -->
+<!-- # <!--         lb_size = 4, --> -->
+<!-- # <!--         label.fontsize = 14 --> -->
+<!-- # <!--     ) + --> -->
+<!-- # <!--     scale_color_manual( --> -->
+<!-- # <!--         values = c("Inhibited" = "navyblue", "Activated" = "darkred"), --> -->
+<!-- # <!--          name = "Pathway Status" --> -->
+<!-- # <!--     ) + --> -->
+<!-- # <!--     scale_fill_discrete_divergingx(palette = "Fall") + --> -->
+<!-- # <!--     guides(fill = FALSE) + --> -->
+<!-- # <!--     theme( --> -->
+<!-- # <!--         panel.border  = element_blank(), --> -->
+<!-- # <!--         legend.key.size = unit(10, "mm"), --> -->
+<!-- # <!--         legend.text = element_text(size = 12), --> -->
+<!-- # <!--         legend.title = element_text(size = 14), --> -->
+<!-- # <!--         legend.margin=margin(0,0,0,0) --> -->
+<!-- # <!--     ) --> -->
+<!-- # <!-- png( --> -->
+<!-- # <!--     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/network_dht.png", --> -->
+<!-- # <!--     width = 250, height =200, units='mm', res = 300 --> -->
+<!-- # <!-- ) --> -->
+<!-- # <!-- network_dht --> -->
+<!-- # <!-- dev.off() --> -->
+<!-- # <!-- ``` --> -->
 <!-- # -->
-<!-- #         `Z Range` = setNames( -->
-<!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_p53$`Z Range`))), -->
-<!-- #             levels(anno_df_p53$`Z Range`) -->
-<!-- #         )), -->
-<!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), -->
-<!-- #     breaks = seq(-0.00013, 0.00013, length.out = 100) -->
-<!-- #     ) %>% -->
-<!-- #     as.ggplot() -->
-<!-- # p2 <- p53_box -->
-<!-- # p53_DHT <- (( p1 | p2) + -->
-<!-- #                   plot_layout(widths = c(0.2, 0.2))) + -->
-<!-- #     plot_annotation(tag_levels = "A")  & -->
-<!-- #     theme( -->
-<!-- #         plot.tag = element_text(size = 22, face = "bold" ), -->
-<!-- #         text = element_text(size = 14) -->
-<!-- #     ) -->
-<!-- # png( -->
-<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/p53_DHT.png", -->
-<!-- #     width = 320, height =150, units='mm', res = 300 -->
-<!-- # ) -->
-<!-- # p53_DHT -->
-<!-- # dev.off() -->
-<!-- ``` -->
-<!-- ## Hedgehog signalling -->
-
-<!-- ```{r} -->
-<!-- # p1 <- plot_gene_contribution( -->
-<!-- #     HH_genePert %>% -->
-<!-- #         .[rownames(.) %in% HH_gene, colnames(.) %in% ductal_DHT_sample], -->
-<!-- #     annotation_df = anno_df_HH, -->
-<!-- #     mapEntrezID = entrez2name, -->
-<!-- #     topGene = length(HH_gene), -->
-<!-- #     annotation_colors = list( -->
+<!-- # <!-- ## Apoptosis --> -->
 <!-- # -->
-<!-- #         `Z Range` = setNames( -->
-<!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HH$`Z Range`))), -->
-<!-- #             levels(anno_df_HH$`Z Range`) -->
-<!-- #         )), -->
-<!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), -->
-<!-- #     breaks = seq(-7.800603e-05, 7.800603e-05, length.out = 100) -->
-<!-- #     ) %>% -->
-<!-- #     as.ggplot() -->
-<!-- # p2 <- HH_box -->
-<!-- # HH_DHT <- (( p1 | p2) + -->
-<!-- #                   plot_layout(widths = c(0.3, 0.2))) + -->
-<!-- #     plot_annotation(tag_levels = "A")  & -->
-<!-- #     theme( -->
-<!-- #         plot.tag = element_text(size = 22, face = "bold" ), -->
-<!-- #         text = element_text(size = 14) -->
+<!-- # <!-- ```{r} --> -->
+<!-- # <!-- p1 <- plot_gene_contribution( --> -->
+<!-- # <!--     Apop_genePert %>% --> -->
+<!-- # <!--         .[rownames(.) %in% Apop_gene, colnames(.) %in% ductal_DHT_sample], --> -->
+<!-- # <!--     filterBy = "max.abs", --> -->
+<!-- # <!--     annotation_df = anno_df_Apop, --> -->
+<!-- # <!--     mapEntrezID = entrez2name, --> -->
+<!-- # <!--     topGene = 10, --> -->
+<!-- # <!--     annotation_colors = list( --> -->
+<!-- # -->
+<!-- # <!--         `Z Range` = setNames( --> -->
+<!-- # <!--             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Apop$`Z Range`))), --> -->
+<!-- # <!--             levels(anno_df_Apop$`Z Range`) --> -->
+<!-- # <!--         )), --> -->
+<!-- # <!--     color = rev(divergex_hcl(100, palette = "RdBu")), --> -->
+<!-- # <!--     breaks = seq(-0.00012, 0.00012, length.out = 100) --> -->
+<!-- # <!--     ) %>% --> -->
+<!-- # <!--     as.ggplot() --> -->
+<!-- # <!-- p2 <- apop_box --> -->
+<!-- # <!-- apop_DHT <- (( p1 | p2) + --> -->
+<!-- # <!--                   plot_layout(widths = c(0.2, 0.2))) + --> -->
+<!-- # <!--     plot_annotation(tag_levels = "A")  & --> -->
+<!-- # <!--     theme( --> -->
+<!-- # <!--         plot.tag = element_text(size = 22, face = "bold" ), --> -->
+<!-- # <!--         text = element_text(size = 14) --> -->
+<!-- # <!--     ) --> -->
+<!-- # <!-- png( --> -->
+<!-- # <!--     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/apop_DHT.png", --> -->
+<!-- # <!--     width = 400, height =230, units='mm', res = 300 --> -->
+<!-- # <!-- ) --> -->
+<!-- # <!-- apop_DHT --> -->
+<!-- # <!-- dev.off() --> -->
+<!-- # <!-- ``` --> -->
+<!-- # -->
+<!-- # <!-- ## Cell Cyle --> -->
+<!-- # -->
+<!-- # <!-- ```{r} --> -->
+<!-- # <!-- # p1 <- plot_gene_contribution( --> -->
+<!-- # <!-- #     CC_genePert %>% --> -->
+<!-- # <!-- #         .[rownames(.) %in% CC_gene, colnames(.) %in% ductal_DHT_sample], --> -->
+<!-- # <!-- #     annotation_df = anno_df_CC, --> -->
+<!-- # <!-- #     mapEntrezID = entrez2name, --> -->
+<!-- # <!-- #     topGene = length(CC_gene), --> -->
+<!-- # <!-- #     annotation_colors = list( --> -->
+<!-- # <!-- # --> -->
+<!-- # <!-- #         `Z Range` = setNames( --> -->
+<!-- # <!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_CC$`Z Range`))), --> -->
+<!-- # <!-- #             levels(anno_df_CC$`Z Range`) --> -->
+<!-- # <!-- #         )), --> -->
+<!-- # <!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), --> -->
+<!-- # <!-- #     breaks = seq(-0.00085, 0.00085, length.out = 100), --> -->
+<!-- # <!-- #     cutree_rows = 2, --> -->
+<!-- # <!-- #     ) %>% --> -->
+<!-- # <!-- #     as.ggplot() --> -->
+<!-- # <!-- # p2 <- CC_box --> -->
+<!-- # <!-- # CC_DHT <- (( p1 | p2) + --> -->
+<!-- # <!-- #                   plot_layout(widths  = c(0.4, 0.2))) + --> -->
+<!-- # <!-- #     plot_annotation(tag_levels = "A")  & --> -->
+<!-- # <!-- #     theme( --> -->
+<!-- # <!-- #         plot.tag = element_text(size = 22, face = "bold" ), --> -->
+<!-- # <!-- #         text = element_text(size = 14) --> -->
+<!-- # <!-- #     ) --> -->
+<!-- # <!-- # png( --> -->
+<!-- # <!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/CC_DHT.png", --> -->
+<!-- # <!-- #     width = 300, height =180, units='mm', res = 300 --> -->
+<!-- # <!-- # ) --> -->
+<!-- # <!-- # CC_DHT --> -->
+<!-- # <!-- # dev.off() --> -->
+<!-- # <!-- ``` --> -->
+<!-- # -->
+<!-- # <!-- ## p53 signalling --> -->
+<!-- # -->
+<!-- # <!-- ```{r} --> -->
+<!-- # <!-- # p1 <- plot_gene_contribution( --> -->
+<!-- # <!-- #     p53_genePert %>% --> -->
+<!-- # <!-- #         .[rownames(.) %in% p53_gene, colnames(.) %in% ductal_DHT_sample], --> -->
+<!-- # <!-- #     annotation_df = anno_df_p53, --> -->
+<!-- # <!-- #     mapEntrezID = entrez2name, --> -->
+<!-- # <!-- #     topGene = length(p53_gene), --> -->
+<!-- # <!-- #     annotation_colors = list( --> -->
+<!-- # <!-- # --> -->
+<!-- # <!-- #         `Z Range` = setNames( --> -->
+<!-- # <!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_p53$`Z Range`))), --> -->
+<!-- # <!-- #             levels(anno_df_p53$`Z Range`) --> -->
+<!-- # <!-- #         )), --> -->
+<!-- # <!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), --> -->
+<!-- # <!-- #     breaks = seq(-0.00013, 0.00013, length.out = 100) --> -->
+<!-- # <!-- #     ) %>% --> -->
+<!-- # <!-- #     as.ggplot() --> -->
+<!-- # <!-- # p2 <- p53_box --> -->
+<!-- # <!-- # p53_DHT <- (( p1 | p2) + --> -->
+<!-- # <!-- #                   plot_layout(widths = c(0.2, 0.2))) + --> -->
+<!-- # <!-- #     plot_annotation(tag_levels = "A")  & --> -->
+<!-- # <!-- #     theme( --> -->
+<!-- # <!-- #         plot.tag = element_text(size = 22, face = "bold" ), --> -->
+<!-- # <!-- #         text = element_text(size = 14) --> -->
+<!-- # <!-- #     ) --> -->
+<!-- # <!-- # png( --> -->
+<!-- # <!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/p53_DHT.png", --> -->
+<!-- # <!-- #     width = 320, height =150, units='mm', res = 300 --> -->
+<!-- # <!-- # ) --> -->
+<!-- # <!-- # p53_DHT --> -->
+<!-- # <!-- # dev.off() --> -->
+<!-- # <!-- ``` --> -->
+<!-- # <!-- ## Hedgehog signalling --> -->
+<!-- # -->
+<!-- # <!-- ```{r} --> -->
+<!-- # <!-- # p1 <- plot_gene_contribution( --> -->
+<!-- # <!-- #     HH_genePert %>% --> -->
+<!-- # <!-- #         .[rownames(.) %in% HH_gene, colnames(.) %in% ductal_DHT_sample], --> -->
+<!-- # <!-- #     annotation_df = anno_df_HH, --> -->
+<!-- # <!-- #     mapEntrezID = entrez2name, --> -->
+<!-- # <!-- #     topGene = length(HH_gene), --> -->
+<!-- # <!-- #     annotation_colors = list( --> -->
+<!-- # <!-- # --> -->
+<!-- # <!-- #         `Z Range` = setNames( --> -->
+<!-- # <!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HH$`Z Range`))), --> -->
+<!-- # <!-- #             levels(anno_df_HH$`Z Range`) --> -->
+<!-- # <!-- #         )), --> -->
+<!-- # <!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), --> -->
+<!-- # <!-- #     breaks = seq(-7.800603e-05, 7.800603e-05, length.out = 100) --> -->
+<!-- # <!-- #     ) %>% --> -->
+<!-- # <!-- #     as.ggplot() --> -->
+<!-- # <!-- # p2 <- HH_box --> -->
+<!-- # <!-- # HH_DHT <- (( p1 | p2) + --> -->
+<!-- # <!-- #                   plot_layout(widths = c(0.3, 0.2))) + --> -->
+<!-- # <!-- #     plot_annotation(tag_levels = "A")  & --> -->
+<!-- # <!-- #     theme( --> -->
+<!-- # <!-- #         plot.tag = element_text(size = 22, face = "bold" ), --> -->
+<!-- # <!-- #         text = element_text(size = 14) --> -->
+<!-- # <!-- #     ) --> -->
+<!-- # <!-- # png( --> -->
+<!-- # <!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/HH_DHT.png", --> -->
+<!-- # <!-- #     width = 320, height =180, units='mm', res = 300 --> -->
+<!-- # <!-- # ) --> -->
+<!-- # <!-- # HH_DHT --> -->
+<!-- # <!-- # dev.off() --> -->
+<!-- # <!-- ``` --> -->
+<!-- # -->
+<!-- # <!-- ```{r} --> -->
+<!-- # <!-- # p1 <- plot_gene_contribution( --> -->
+<!-- # <!-- #     HIF_genePert %>% --> -->
+<!-- # <!-- #         .[rownames(.) %in% HIF_gene, colnames(.) %in% ductal_DHT_sample], --> -->
+<!-- # <!-- #     filterBy = "mean", --> -->
+<!-- # <!-- #     annotation_df = anno_df_HIF, --> -->
+<!-- # <!-- #     mapEntrezID = entrez2name, --> -->
+<!-- # <!-- #     topGene = 20, --> -->
+<!-- # <!-- #     annotation_colors = list( --> -->
+<!-- # <!-- #         `Z Range` = setNames( --> -->
+<!-- # <!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HIF$`Z Range`))), --> -->
+<!-- # <!-- #             levels(anno_df_HIF$`Z Range`) --> -->
+<!-- # <!-- #         )), --> -->
+<!-- # <!-- #     clustering_method = "average", --> -->
+<!-- # <!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), --> -->
+<!-- # <!-- #     cutree_rows = 2, --> -->
+<!-- # <!-- #     breaks = seq(-0.00025, 0.00025, length.out = 100) --> -->
+<!-- # <!-- #     ) %>% --> -->
+<!-- # <!-- #     as.ggplot() --> -->
+<!-- # <!-- # p2 <- HIF_box --> -->
+<!-- # <!-- # HIF_DHT <- (( p1 | p2) + --> -->
+<!-- # <!-- #                   plot_layout(widths = c(0.3, 0.2))) + --> -->
+<!-- # <!-- #     plot_annotation(tag_levels = "A")  & --> -->
+<!-- # <!-- #     theme( --> -->
+<!-- # <!-- #         plot.tag = element_text(size = 22, face = "bold" ), --> -->
+<!-- # <!-- #         text = element_text(size = 14) --> -->
+<!-- # <!-- #     ) --> -->
+<!-- # <!-- # png( --> -->
+<!-- # <!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/HIF_DHT.png", --> -->
+<!-- # <!-- #     width = 320, height =180, units='mm', res = 300 --> -->
+<!-- # <!-- # ) --> -->
+<!-- # <!-- # HIF_DHT --> -->
+<!-- # <!-- # dev.off() --> -->
+<!-- # <!-- ``` --> -->
+<!-- # -->
+<!-- # ## Lipid and atherosclerosis -->
+<!-- # -->
+<!-- # ```{r} -->
+<!-- # # p1 <- plot_gene_contribution( -->
+<!-- # #     Lipid_genePert %>% -->
+<!-- # #         .[rownames(.) %in% Lipid_gene, colnames(.) %in% ductal_DHT_sample], -->
+<!-- # #     filterBy = "max.abs", -->
+<!-- # #     annotation_df = anno_df_Lipid, -->
+<!-- # #     mapEntrezID = entrez2name, -->
+<!-- # #     topGene = 13, -->
+<!-- # #     annotation_colors = list( -->
+<!-- # # -->
+<!-- # #         `Z Range` = setNames( -->
+<!-- # #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Lipid$`Z Range`))), -->
+<!-- # #             levels(anno_df_Lipid$`Z Range`) -->
+<!-- # #         )), -->
+<!-- # #     color = rev(divergex_hcl(100, palette = "RdBu")), -->
+<!-- # #     cutree_rows = 2, -->
+<!-- # #     breaks = seq(-0.00012, 0.00012, length.out = 100) -->
+<!-- # #     ) %>% -->
+<!-- # #     as.ggplot() -->
+<!-- # # p2 <- Lipid_box -->
+<!-- # # Lipid_DHT <- (( p1 | p2) + -->
+<!-- # #                   plot_layout(widths = c(0.25, 0.2))) + -->
+<!-- # #     plot_annotation(tag_levels = "A")  & -->
+<!-- # #     theme( -->
+<!-- # #         plot.tag = element_text(size = 22, face = "bold" ), -->
+<!-- # #         text = element_text(size = 14) -->
+<!-- # #     ) -->
+<!-- # # png( -->
+<!-- # #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/Lipid_DHT.png", -->
+<!-- # #     width = 330, height =180, units='mm', res = 300 -->
+<!-- # # ) -->
+<!-- # # Lipid_DHT -->
+<!-- # # dev.off() -->
+<!-- # ``` -->
+<!-- # -->
+<!-- # ```{r} -->
+<!-- # lipid_apop_overlap <- gsTopology %>% -->
+<!-- #     .[names(.) %in% c( -->
+<!-- #         "kegg.Apoptosis", "kegg.Lipid and atherosclerosis" -->
+<!-- #     )] %>% -->
+<!-- #     lapply(rownames) %>% -->
+<!-- #     fromList() %>% -->
+<!-- #     set_colnames(str_remove_all(colnames(.), "kegg.")) %>% -->
+<!-- #     upset( -->
+<!-- #         sets = colnames(.), -->
+<!-- #         nintersects = NA, -->
+<!-- #         queries = list( -->
+<!-- #           list(query = intersects, -->
+<!-- #                params = list("Apoptosis",  "Lipid and atherosclerosis"), -->
+<!-- #                color = "orange", -->
+<!-- #                active = T)) -->
+<!-- # -->
 <!-- #     ) -->
-<!-- # png( -->
-<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/HH_DHT.png", -->
-<!-- #     width = 320, height =180, units='mm', res = 300 -->
-<!-- # ) -->
-<!-- # HH_DHT -->
-<!-- # dev.off() -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- # p1 <- plot_gene_contribution( -->
-<!-- #     HIF_genePert %>% -->
-<!-- #         .[rownames(.) %in% HIF_gene, colnames(.) %in% ductal_DHT_sample], -->
-<!-- #     filterBy = "mean", -->
-<!-- #     annotation_df = anno_df_HIF, -->
-<!-- #     mapEntrezID = entrez2name, -->
-<!-- #     topGene = 20, -->
-<!-- #     annotation_colors = list( -->
-<!-- #         `Z Range` = setNames( -->
-<!-- #             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_HIF$`Z Range`))), -->
-<!-- #             levels(anno_df_HIF$`Z Range`) -->
-<!-- #         )), -->
-<!-- #     clustering_method = "average", -->
-<!-- #     color = rev(divergex_hcl(100, palette = "RdBu")), -->
-<!-- #     cutree_rows = 2, -->
-<!-- #     breaks = seq(-0.00025, 0.00025, length.out = 100) -->
-<!-- #     ) %>% -->
-<!-- #     as.ggplot() -->
-<!-- # p2 <- HIF_box -->
-<!-- # HIF_DHT <- (( p1 | p2) + -->
-<!-- #                   plot_layout(widths = c(0.3, 0.2))) + -->
-<!-- #     plot_annotation(tag_levels = "A")  & -->
-<!-- #     theme( -->
-<!-- #         plot.tag = element_text(size = 22, face = "bold" ), -->
-<!-- #         text = element_text(size = 14) -->
-<!-- #     ) -->
-<!-- # png( -->
-<!-- #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/HIF_DHT.png", -->
-<!-- #     width = 320, height =180, units='mm', res = 300 -->
-<!-- # ) -->
-<!-- # HIF_DHT -->
-<!-- # dev.off() -->
-<!-- ``` -->
-
-## Lipid and atherosclerosis
-
-```{r}
-# p1 <- plot_gene_contribution(
-#     Lipid_genePert %>%
-#         .[rownames(.) %in% Lipid_gene, colnames(.) %in% ductal_DHT_sample],
-#     filterBy = "max.abs",
-#     annotation_df = anno_df_Lipid,
-#     mapEntrezID = entrez2name,
-#     topGene = 13,
-#     annotation_colors = list(
-#
-#         `Z Range` = setNames(
-#             colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Lipid$`Z Range`))),
-#             levels(anno_df_Lipid$`Z Range`)
-#         )),
-#     color = rev(divergex_hcl(100, palette = "RdBu")),
-#     cutree_rows = 2,
-#     breaks = seq(-0.00012, 0.00012, length.out = 100)
-#     ) %>%
-#     as.ggplot()
-# p2 <- Lipid_box
-# Lipid_DHT <- (( p1 | p2) +
-#                   plot_layout(widths = c(0.25, 0.2))) +
-#     plot_annotation(tag_levels = "A")  &
-#     theme(
-#         plot.tag = element_text(size = 22, face = "bold" ),
-#         text = element_text(size = 14)
-#     )
-# png(
-#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/Lipid_DHT.png",
-#     width = 330, height =180, units='mm', res = 300
-# )
-# Lipid_DHT
-# dev.off()
+<!-- # # png( -->
+<!-- # #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/lipid_apop_overlap.png", -->
+<!-- # #     width = 200, height =100, units='mm', res = 300 -->
+<!-- # # ) -->
+<!-- # # lipid_apop_overlap -->
+<!-- # # dev.off() -->
+<!-- # ``` -->
+<!-- # -->
+<!-- # ## Public AR signature -->
+<!-- # -->
+<!-- # ```{r} -->
+<!-- # # public_AR <- (ar_sig_box / vasiliou_box -->
+<!-- # #           ) + -->
+<!-- # #     plot_layout(guides = "collect", -->
+<!-- # #                 heights = c(3,2)) + -->
+<!-- # #     plot_annotation( -->
+<!-- # #         tag_levels = "A" -->
+<!-- # #     ) & -->
+<!-- # #     theme( -->
+<!-- # #         plot.tag = element_text(size = 35, face = "bold" ) -->
+<!-- # #     ) -->
+<!-- # # png( -->
+<!-- # #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/public_AR.png", -->
+<!-- # #     width = 300, height =370, units='mm', res = 300 -->
+<!-- # # ) -->
+<!-- # # public_AR -->
+<!-- # # dev.off() -->
+<!-- # ``` -->
+<!-- # -->
+<!-- # ## Fig 5 -->
+<!-- # -->
+<!-- # ```{r} -->
+<!-- # # png( -->
+<!-- # #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/cell_line_meta.png", -->
+<!-- # #     width = 700, height =650, units='mm', res = 300 -->
+<!-- # # ) -->
+<!-- # # hp <- DHT_4data %>% -->
+<!-- # #     mutate( -->
+<!-- # #         gs_name = str_remove_all(gs_name, "kegg."), -->
+<!-- # #         rankStat = -sign(`t statistic`) * log10(`P-value`)) %>% -->
+<!-- # #     dplyr::filter(gs_name %in% dht_ductual_final) %>% -->
+<!-- # #     dplyr::select(gs_name, Type, `t statistic`) %>% -->
+<!-- # #     mutate( -->
+<!-- # #         Type = ifelse(Type == "DHT_infiltrating", "Ductal-like PDE", Type), -->
+<!-- # #         Type = ifelse(Type == "DHT_invasive", "Lobular-like PDE", Type) -->
+<!-- # #         # gs_name = str_wrap(gs_name, 25) -->
+<!-- # #     ) %>% -->
+<!-- # #     pivot_wider( -->
+<!-- # #         names_from = "Type", -->
+<!-- # #         values_from = "t statistic" -->
+<!-- # #     ) %>% -->
+<!-- # #     mutate(gs_name = str_wrap(gs_name, 25)) %>% -->
+<!-- # #     column_to_rownames("gs_name") %>% -->
+<!-- # #     #dplyr::select(-DHT_invasive) %>% -->
+<!-- # #     ComplexHeatmap::Heatmap( -->
+<!-- # #         col = rev(divergex_hcl(100, palette = "RdBu")), -->
+<!-- # #         row_split = 2, -->
+<!-- # #         column_split = 2, -->
+<!-- # #         width = unit(400, "mm"), -->
+<!-- # #         height = unit(400, "mm"), -->
+<!-- # #         heatmap_legend_param = list( -->
+<!-- # #             title = "T-statistic", -->
+<!-- # #             direction = "horizontal", -->
+<!-- # #             labels_gp = gpar(fontsize = 35), -->
+<!-- # #             grid_height = unit(2, "cm") -->
+<!-- # #         ), -->
+<!-- # #         row_names_gp = gpar(fontsize = 40), -->
+<!-- # #         column_names_gp = gpar(fontface = c("plain","plain", "plain","plain", "bold","bold"), fontsize = 40), -->
+<!-- # #         row_title=NULL, -->
+<!-- # #         column_title = NULL -->
+<!-- # # -->
+<!-- # #     ) -->
+<!-- # # ComplexHeatmap::draw(hp, -->
+<!-- # #                      heatmap_legend_side = "top", -->
+<!-- # #                      legend_title_gp = gpar(fontsize = 45, fontface = "bold")) -->
+<!-- # # -->
+<!-- # # # dev.off() -->
 ```
-
-```{r}
-lipid_apop_overlap <- gsTopology %>%
-    .[names(.) %in% c(
-        "kegg.Apoptosis", "kegg.Lipid and atherosclerosis"
-    )] %>%
-    lapply(rownames) %>%
-    fromList() %>%
-    set_colnames(str_remove_all(colnames(.), "kegg.")) %>%
-    upset(
-        sets = colnames(.),
-        nintersects = NA,
-        queries = list(
-          list(query = intersects,
-               params = list("Apoptosis",  "Lipid and atherosclerosis"),
-               color = "orange",
-               active = T))
-
-    )
-# png(
-#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/lipid_apop_overlap.png",
-#     width = 200, height =100, units='mm', res = 300
-# )
-# lipid_apop_overlap
-# dev.off()
-```
-
-## Public AR signature
-
-```{r}
-# public_AR <- (ar_sig_box / vasiliou_box
-#           ) +
-#     plot_layout(guides = "collect",
-#                 heights = c(3,2)) +
-#     plot_annotation(
-#         tag_levels = "A"
-#     ) &
-#     theme(
-#         plot.tag = element_text(size = 35, face = "bold" )
-#     )
-# png(
-#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/public_AR.png",
-#     width = 300, height =370, units='mm', res = 300
-# )
-# public_AR
-# dev.off()
-```
-
-## Fig 5
-
-```{r}
-# png(
-#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/cell_line_meta.png",
-#     width = 700, height =650, units='mm', res = 300
-# )
-# hp <- DHT_4data %>%
-#     mutate(
-#         gs_name = str_remove_all(gs_name, "kegg."),
-#         rankStat = -sign(`t statistic`) * log10(`P-value`)) %>%
-#     dplyr::filter(gs_name %in% dht_ductual_final) %>%
-#     dplyr::select(gs_name, Type, `t statistic`) %>%
-#     mutate(
-#         Type = ifelse(Type == "DHT_infiltrating", "Ductal-like PDE", Type),
-#         Type = ifelse(Type == "DHT_invasive", "Lobular-like PDE", Type)
-#         # gs_name = str_wrap(gs_name, 25)
-#     ) %>%
-#     pivot_wider(
-#         names_from = "Type",
-#         values_from = "t statistic"
-#     ) %>%
-#     mutate(gs_name = str_wrap(gs_name, 25)) %>%
-#     column_to_rownames("gs_name") %>%
-#     #dplyr::select(-DHT_invasive) %>%
-#     ComplexHeatmap::Heatmap(
-#         col = rev(divergex_hcl(100, palette = "RdBu")),
-#         row_split = 2,
-#         column_split = 2,
-#         width = unit(400, "mm"),
-#         height = unit(400, "mm"),
-#         heatmap_legend_param = list(
-#             title = "T-statistic",
-#             direction = "horizontal",
-#             labels_gp = gpar(fontsize = 35),
-#             grid_height = unit(2, "cm")
-#         ),
-#         row_names_gp = gpar(fontsize = 40),
-#         column_names_gp = gpar(fontface = c("plain","plain", "plain","plain", "bold","bold"), fontsize = 40),
-#         row_title=NULL,
-#         column_title = NULL
-#
-#     )
-# ComplexHeatmap::draw(hp,
-#                      heatmap_legend_side = "top",
-#                      legend_title_gp = gpar(fontsize = 45, fontface = "bold"))
-#
-# # dev.off()
-```
-
-## Combination treatment
-
-```{r}
-ductal_2treat %>%
-    dplyr::filter(group == "DHT & E2+DHT") %>%
-    mutate(gs_name = str_remove_all(gs_name, "kegg.")) %>%
-    ggplot(
-        aes(Comparison, gs_name, fill = `t statistic`)
-    ) +
-    geom_tile() +
-    scale_fill_distiller(palette = "RdBu",
-                         limit = c(-5, 5),
-                         name = "T-statistic") +
-    labs( x= "",  y = "")
-```
-

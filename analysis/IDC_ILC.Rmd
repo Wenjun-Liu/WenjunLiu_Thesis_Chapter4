@@ -772,24 +772,15 @@ test_type <- rep(c("IDC", "ILC"), times = c(ncol(exprs(IDC_test)), ncol(exprs(IL
 splsda.test <- predict(splsda.final,
                        combined_test, 
                        dist = "all")
-# evaluate the prediction accuracy for the first two components
-test.comp1 <- splsda.test$class$centroids.dist[,1]
-table(factor(test.comp1, levels = unique(test_type)), test_type) 
 ```
 
 The ROC curve of the testing was: 
 
 ```{r}
-auroc(splsda.final, roc.comp = 2, print = FALSE)
+auroc(splsda.final, newdata = combined_test, outcome.test = test_type, roc.comp = 2, print = FALSE,
+     legend.title = "Subtype")
 ```
 
-```{r}
-# # save the prediction model as an RDS object
-# saveRDS(
-#     splsda.final, 
-#     file = here::here("output/splsda_model.rds")
-# )
-```
 
 ## Prediction
 
