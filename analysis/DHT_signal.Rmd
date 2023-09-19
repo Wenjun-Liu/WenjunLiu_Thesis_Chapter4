@@ -930,6 +930,330 @@ Lipid_box <-  ssFC_tumor_df %>%
 Lipid_box
 ```
 
+## Neuroactive ligand-receptor interaction 
+
+```{r}
+Neuro_genePert <-  genePertScore_tumor$`kegg.Neuroactive ligand-receptor interaction`
+Neuro_path <- normalised_tumor_mat %>%
+    .["kegg.Neuroactive ligand-receptor interaction", colnames(.) %in% ductal_DHT_sample]
+Neuro_gene <- Neuro_genePert %>%
+        .[, colnames(.) %in% ductal_DHT_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == 3}),] %>%
+    apply(1, function(y){
+            cor(
+                y,
+                as.vector(t(Neuro_path)))}) %>%
+        .[!is.na(.)] %>%
+        .[. > 0.6] %>%
+    names()
+Neuro_gene <- intersect(Neuro_gene, rownames(ssFC_tumor))
+```
+
+The two genes predominantly driving the activation of the Neuroactive ligand-receptor interaction pathway are the ADM and EDN2. 
+
+```{r}
+anno_df_Neuro <- normalised_tumor_df   %>%
+            mutate(
+                `Z Range` = cut(
+                    `kegg.Neuroactive ligand-receptor interaction`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+                )
+            ) %>%
+            dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    Neuro_genePert %>%
+        .[rownames(.) %in% Neuro_gene, colnames(.) %in% ductal_DHT_sample],
+    filterBy = "mean", 
+    annotation_df = anno_df_HIF, 
+    mapEntrezID = entrez2name, 
+    topGene = 20,
+    annotation_colors = list(
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Neuro$`Z Range`))),
+            levels(anno_df_Neuro$`Z Range`)
+        )), 
+    clustering_method = "average",
+    color = rev(divergex_hcl(100, palette = "RdBu")),
+    breaks = seq(-0.00025, 0.00025, length.out = 100)
+    ) 
+```
+
+Interestingly, the expressions of ADM and EDN2 were both increased by DHT in the ductal-like PDEs but decreased in the lobular-like PDEs. 
+
+```{r}
+Neuro_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% Neuro_gene
+    ) %>%
+    pull(mapTo)
+Neuro_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% Neuro_gene_name, 
+        treat == "DHT"
+        ) %>%
+    mutate(
+        Diagnosis = factor(Diagnosis, levels = c(
+            "IDC-like", "ILC-like"
+        ))
+    ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+Neuro_box
+```
+
+## Regulation of lipolysis in adipocytes
+
+```{r}
+Adipo_genePert <-  genePertScore_tumor$`kegg.Regulation of lipolysis in adipocytes`
+Adipo_path <- normalised_tumor_mat %>%
+    .["kegg.Regulation of lipolysis in adipocytes", colnames(.) %in% ductal_DHT_sample]
+Adipo_gene <- Adipo_genePert %>%
+    .[, colnames(.) %in% ductal_DHT_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == 3}),] %>%
+    apply(1, function(y){
+        cor(
+            y,
+            as.vector(t(Adipo_path)))}) %>%
+    .[!is.na(.)] %>%
+    .[. > 0.6] %>%
+    names()
+Adipo_gene <- intersect(Adipo_gene, rownames(ssFC_tumor))
+```
+
+The strongest potential driver behind the activation of the Regulation of lipolysis in adipocytes pathway is PDE3B. 
+
+```{r}
+anno_df_Adipo <- normalised_tumor_df   %>%
+    mutate(
+        `Z Range` = cut(
+            `kegg.Regulation of lipolysis in adipocytes`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+        )
+    ) %>%
+    dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    Adipo_genePert %>%
+        .[rownames(.) %in% Adipo_gene, colnames(.) %in% ductal_DHT_sample],
+    filterBy = "mean", 
+    annotation_df = anno_df_HIF, 
+    mapEntrezID = entrez2name, 
+    topGene = 20,
+    annotation_colors = list(
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Adipo$`Z Range`))),
+            levels(anno_df_Adipo$`Z Range`)
+        )), 
+    clustering_method = "average",
+    color = rev(divergex_hcl(100, palette = "RdBu")),
+    breaks = seq(-0.00025, 0.00025, length.out = 100)
+) 
+```
+
+```{r}
+Adipo_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% Adipo_gene
+    ) %>%
+    pull(mapTo)
+Adipo_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% Adipo_gene_name, 
+        treat == "DHT"
+    ) %>%
+    mutate(
+        Diagnosis = factor(Diagnosis, levels = c(
+            "IDC-like", "ILC-like"
+        ))
+    ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+Adipo_box
+```
+
+## Longevity regulating pathway
+
+```{r}
+Longevity_genePert <-  genePertScore_tumor$`kegg.Longevity regulating pathway - multiple species`
+Longevity_path <- normalised_tumor_mat %>%
+    .["kegg.Longevity regulating pathway - multiple species", colnames(.) %in% ductal_DHT_sample]
+Longevity_gene <- Longevity_genePert %>%
+    .[, colnames(.) %in% ductal_DHT_sample] %>%
+    .[apply(., 1, function(x){sum(sign(x)) == 3}),] %>%
+    apply(1, function(y){
+        cor(
+            y,
+            as.vector(t(Longevity_path)))}) %>%
+    .[!is.na(.)] %>%
+    .[. > 0.6] %>%
+    names()
+Longevity_gene <- intersect(Longevity_gene, rownames(ssFC_tumor))
+```
+
+
+```{r}
+anno_df_Longevity <- normalised_tumor_df   %>%
+    mutate(
+        `Z Range` = cut(
+            `kegg.Longevity regulating pathway - multiple species`, breaks = seq(-1, 1, length.out = 6), include.lowest = TRUE
+        )
+    ) %>%
+    dplyr::select(sample, `Z Range`)
+plot_gene_contribution(
+    Longevity_genePert %>%
+        .[rownames(.) %in% Longevity_gene, colnames(.) %in% ductal_DHT_sample],
+    filterBy = "mean", 
+    annotation_df = anno_df_HIF, 
+    mapEntrezID = entrez2name, 
+    topGene = 20,
+    annotation_colors = list(
+        `Z Range` = setNames(
+            colorRampPalette(c("navyblue", "white", "darkred"))(length(levels(anno_df_Longevity$`Z Range`))),
+            levels(anno_df_Longevity$`Z Range`)
+        )), 
+    clustering_method = "average",
+    color = rev(divergex_hcl(100, palette = "RdBu")),
+    breaks = seq(-0.00025, 0.00025, length.out = 100)
+) 
+```
+
+```{r}
+Longevity_gene_name <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% Longevity_gene
+    ) %>%
+    pull(mapTo)
+Longevity_box <- ssFC_tumor_df %>%
+    dplyr::filter(
+        gene_name %in% Longevity_gene_name, 
+        treat == "DHT"
+    ) %>%
+    mutate(
+        Diagnosis = factor(Diagnosis, levels = c(
+            "IDC-like", "ILC-like"
+        ))
+    ) %>%
+    ggplot(
+        aes(Diagnosis, ssFC, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    facet_wrap(~gene_name, 
+               scales = "free_y") +
+    scale_fill_manual(
+        values = new_diag_col, 
+        name = "Predicted\nsubtype"
+    ) +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+    theme(
+        axis.text.x = element_text(colour = new_diag_col)
+    ) +
+    labs(
+        y = "ssFC",
+        x = "")
+Longevity_box
+```
+
+## Overall key drivers
+
+```{r}
+ductal_targets_entrezid <- mget(str_subset(
+    ls(pattern = "_gene"), 
+    "name|Pert", negate = TRUE)) %>%
+    Reduce(union, .)
+ductal_targets <- entrez2name %>%
+    dplyr::filter(
+        entrezid %in% ductal_targets_entrezid
+    )
+```
+
+The potential key drivers selected for individual pathways were aggregated to a generate a list of `r nrow(ductal_targets)` potential AR-regulated genes in IDC-like tumours. 
+
+```{r}
+ductal_targets <- ssFC_tumor_df  %>%
+    dplyr::filter(
+        gene_name %in% ductal_targets$mapTo, 
+        treat == "DHT"
+    ) %>%
+    dplyr::select(gene_name, ssFC, Diagnosis) %>%
+    group_by(gene_name, Diagnosis) %>%
+    summarise(medianFC = median(ssFC)) %>%
+    pivot_wider(
+        names_from = "Diagnosis", 
+        values_from = "medianFC"
+    ) %>%
+    mutate(
+       Align = ifelse(
+           sign(`ILC-like`) == sign(`IDC-like`), TRUE, FALSE), 
+       IDC_dir = ifelse(
+           `IDC-like` < 0, "Down", "Up"
+       )
+    )
+```
+
+Majority of those genes had contradicting direction of change between the DHT-treated IDC- and ILC-like PDEs. 
+
+```{r}
+ductal_targets %>%
+    group_by(
+        Align, IDC_dir
+    ) %>%
+    summarise(n = n()) %>%
+    dplyr::select(
+        `IDC-like Direction` = IDC_dir, 
+        Align, `Number of Genes` = n
+    ) %>%
+    pander()
+```
+
+The full list of `r nrow(ductal_targets)` potential AR-regulated genes detected in IDC-like tumours is displayed in the table below: 
+
+```{r}
+ductal_targets %>%
+    mutate(
+        `IDC-like` = round(`IDC-like`, digits = 2)
+    ) %>%
+    arrange(`IDC-like`) %>%
+    dplyr::select(
+        `Gene` = gene_name, 
+        `IDC-like Direction` = IDC_dir, 
+        `IDC-like medianFC` = `IDC-like`, 
+        Align
+    ) %>%
+    mutate_if(is.character, as.factor) %>%
+    datatable(
+        filter = "top") %>%
+    formatStyle(
+        "IDC-like Direction",
+         color = styleEqual(c("Down", "Up"), c("blue", "red"))
+    )
+```
 
 # Compare to known AR signature
 
@@ -942,11 +1266,6 @@ AR_sig <- read.csv(here::here("data/AR_sig_down.csv")) %>%
         read.csv(here::here("data/AR_sig_up.csv")) %>%
             mutate(AR_sig = "Up")
     )
-# AR_sig %>%
-#     dplyr::filter(
-#         str_detect(gene_name, "SLC")
-#         # gene_name == "SLC2A1"
-#         )
 ```
 
 A list of `r nrow(AR_sig)` AR signatures that were previously detected in androgen-treated cell line and xenograft models were read in. 
@@ -971,7 +1290,7 @@ kg <- sapply(gsTopology, rownames) %>%
     dplyr::select(-entrezid)
 ```
 
-
+Among the 88 potential hub genes chosen, only RRM2 was in the `r nrow(AR_sig)` previously detected Nature Medicine AR signatures.
 
 
 ```{r}
@@ -1002,7 +1321,7 @@ ar_sig_overlap <- kg %>%
     mutate_all(as.factor)
 ```
 
-Out of the `r nrow(AR_sig)` previously detected AR signatures, `r length(levels(ar_sig_overlap$gene_name))` of them were also implicated in pathways significantly perturbed by DHT in ductal-like tumours and had directional concordant changes. 
+While not chosen as the hub drivers behind observed pathway perturbation, `r (length(levels(ar_sig_overlap$gene_name)) - 1)` previously detected AR signatures were implicated in pathways significantly perturbed by DHT in ductal-like tumours and had directional concordant changes. 
 
 The distribution of those `r length(levels(ar_sig_overlap$gene_name))` genes' single-sample logFCs in all DHT-treated PDEs are:
 
@@ -1024,8 +1343,8 @@ ar_sig_box <- ssFC_tumor_df %>%
         gene_name %in% ar_sig_overlap$gene_name,
         treat == "DHT"
         ) %>%
-    mutate(Diagnosis = ifelse(
-        str_detect(Diagnosis, "invasive"), "ILC-like", "IDC-like")) %>%
+    # mutate(Diagnosis = ifelse(
+    #     str_detect(Diagnosis, "invasive"), "ILC-like", "IDC-like")) %>%
     ggplot(
         aes(Diagnosis, ssFC, fill = Diagnosis)
     ) +
@@ -1110,8 +1429,8 @@ vasiliou_box <- ssFC_tumor_df %>%
         gene_name %in% vasiliou_pde_overlap$gene_name,
         treat == "DHT"
         ) %>%
-    mutate(Diagnosis = ifelse(
-        str_detect(Diagnosis, "invasive"), "ILC-like", "IDC-like")) %>%
+    # mutate(Diagnosis = ifelse(
+    #     str_detect(Diagnosis, "invasive"), "ILC-like", "IDC-like")) %>%
     ggplot(
         aes(Diagnosis, ssFC, fill = Diagnosis)
     ) +
@@ -1135,7 +1454,47 @@ vasiliou_box <- ssFC_tumor_df %>%
 vasiliou_box
 ```
 
+# Compare to cell lines
 
+```{r}
+cell_sSNAPPY <- readRDS(here::here("data/CellLine_sSNAPPY.rds"))
+```
+
+Among pathways that were significantly perturbed in DHT-treated IDC-like PDEs, only the cell cycle pathway was significantly perturbed in a cell line data: it was significantly inhibited by DHT in ZR-75 cells cultured in full media. 
+
+Perturbation scores of pathways that were significantly perturbed by DHT in ductal-like PDEs in the four cell line data were visaulised as a heatmap. The directional consistency of those perturbation scores among the cell lines were low. 
+
+```{r, fig.height=5, fig.width=9, fig.cap="*Normalised perturbation scores of pathways that were significantly perturbed by DHT in ductal-like PDEs in the four cell line data. Rows of the heatmap were annotated by the direction of changes observed in the PDEs.*"}
+dht_rowAnno <- ifelse(
+    dht_ductal_gs < 0, "Inhibited", "Activated"
+) %>%
+    enframe(
+        name = "gs_name", 
+        value = "Change in Ductal-like PDEs"
+    ) %>%
+    column_to_rownames("gs_name") 
+cell_sSNAPPY %>%
+    dplyr::filter(
+        gs_name %in% names(dht_ductal_gs)
+    ) %>%
+    dplyr::select(gs_name, `t statistic`, Group) %>%
+    pivot_wider(
+        names_from = Group, values_from = `t statistic`
+    ) %>%
+    column_to_rownames("gs_name") %>%
+    pheatmap(
+        breaks = seq(-3.5, 3.5, length.out = 100), 
+        color = colorRampPalette(c("navy", "white", "red"))(100), 
+        annotation_row = dht_rowAnno, 
+        annotation_colors = list(
+            `Change in Ductal-like PDEs` = c(
+                "Activated" = "firebrick", 
+                "Inhibited" = "midnightblue"
+            )
+                
+        )
+    )
+```
 
 # Thesis figures
 

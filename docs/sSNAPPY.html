@@ -425,7 +425,7 @@ div.tocify {
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
 <span class="glyphicon glyphicon-list" aria-hidden="true"></span>
-workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
+workflowr <span class="glyphicon glyphicon-ok text-success"
 aria-hidden="true"></span>
 </button>
 </p>
@@ -436,8 +436,8 @@ aria-hidden="true"></span>
 </li>
 <li>
 <a data-toggle="tab" href="#checks"> Checks <span
-class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> </a>
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -446,13 +446,13 @@ aria-hidden="true"></span> </a>
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2023-08-01
+<strong>Last updated:</strong> 2023-09-19
 </p>
 <p>
 <strong>Checks:</strong> <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 5
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
 <span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> 1
+aria-hidden="true"></span> 0
 </p>
 <p>
 <strong>Knit directory:</strong> <code>WenjunLiu_Thesis_Chapter4/</code>
@@ -472,6 +472,24 @@ versions</em> tab lists the development history.
 </div>
 <div id="checks" class="tab-pane fade">
 <div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
+</div>
+</div>
+</div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
@@ -559,18 +577,68 @@ project makes it easier to run your code on other machines.</p>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongnoversioncontrol">
-<span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> <strong>Repository version:</strong> no
-version control </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomWenjunLiuWenjunLiuThesisChapter4tree772af9f5f126a8b55968d3e50ceb2edda0c03a1dtargetblank772af9fa">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/tree/772af9f5f126a8b55968d3e50ceb2edda0c03a1d" target="_blank">772af9f</a>
+</a>
 </p>
 </div>
-<div id="strongRepositoryversionstrongnoversioncontrol"
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomWenjunLiuWenjunLiuThesisChapter4tree772af9f5f126a8b55968d3e50ceb2edda0c03a1dtargetblank772af9fa"
 class="panel-collapse collapse">
 <div class="panel-body">
-<p>Tracking code development and connecting the code version to the
-results is critical for reproducibility. To start using Git, open the
-Terminal and type <code>git init</code> in your project directory.</p>
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/tree/772af9f5f126a8b55968d3e50ceb2edda0c03a1d" target="_blank">772af9f</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    data/.DS_Store
+    Ignored:    data/aligned/
+    Ignored:    data/knott_scRNA.rds
+    Ignored:    data/knott_scRNA.rds.zip
+    Ignored:    data/raw/
+    Ignored:    data/scRNA_ref/
+    Ignored:    data/trimmed/
+    Ignored:    output/permutedscore_tumor.rds
+    Ignored:    output/tcga_breast.rds
+
+Untracked files:
+    Untracked:  .DS_Store
+    Untracked:  data/CellLine_sSNAPPY.rds
+    Untracked:  data/EMT_marker.txt
+    Untracked:  hsa04066.pathview.png
+
+Unstaged changes:
+    Modified:   analysis/DHT_signal.Rmd
+    Modified:   analysis/IDC_ILC.Rmd
+    Modified:   analysis/hsa04066.pathview.png
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
 </div>
 </div>
 </div>
@@ -578,11 +646,74 @@ Terminal and type <code>git init</code> in your project directory.</p>
 <hr>
 </div>
 <div id="versions" class="tab-pane fade">
+
 <p>
-This project is not being versioned with Git. To obtain the full
-reproducibility benefits of using workflowr, please see
-<code>?wflow_start</code>.
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/sSNAPPY.Rmd</code>) and HTML
+(<code>docs/sSNAPPY.html</code>) files. If you’ve configured a remote
+Git repository (see <code>?wflow_git_remote</code>), click on the
+hyperlinks in the table below to view the files as they were in that
+past version.
 </p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/analysis/sSNAPPY.Rmd" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+<td>
+tidy up all Rmd for thesis
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/sSNAPPY.html" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+<td>
+tidy up all Rmd for thesis
+</td>
+</tr>
+</tbody>
+</table>
+</div>
 <hr>
 </div>
 </div>
@@ -822,9 +953,9 @@ diag_cols &lt;- readRDS(&quot;~/GSE800098/output/diag_cols.rds&quot;)</code></pr
 #   column_to_rownames(&quot;gene_id&quot;)
 # saveRDS(mergedCounts, here::here(&quot;data/mergedCounts.rds&quot;))
 mergedCounts &lt;- readRDS(here::here(&quot;data/mergedCounts.rds&quot;))</code></pre>
-<pre><code>           used  (Mb) gc trigger   (Mb) limit (Mb) max used  (Mb)
-Ncells 11106656 593.2   19553455 1044.3         NA 15326221 818.6
-Vcells 26759901 204.2   37389395  285.3     204800 31091163 237.3</code></pre>
+<pre><code>           used  (Mb) gc trigger  (Mb) limit (Mb) max used  (Mb)
+Ncells 11106364 593.2   16597097 886.4         NA 16597097 886.4
+Vcells 26761320 204.2   47182743 360.0     204800 32643524 249.1</code></pre>
 <p>The filtered and normalised <code>DGEList</code> was loaded in.</p>
 <pre class="r"><code>dge_tumor &lt;- readRDS(here::here(&quot;output/dge_tumor.rds&quot;))</code></pre>
 <pre class="r"><code>cqNorma_tumor &lt;- with(
@@ -994,6 +1125,43 @@ distribution.</p>
     ) 
 plot_grid(plotlist = pl, nrow = 2)</code></pre>
 <p><img src="figure/sSNAPPY.Rmd/hist_pl_tumor-1.png" width="960" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-hist_pl_tumor-1">
+Past versions of hist_pl_tumor-1.png
+</button>
+</p>
+<div id="fig-hist_pl_tumor-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/sSNAPPY.Rmd/hist_pl_tumor-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <div id="sample-wise-significance" class="section level2">
 <h2>Sample-wise significance</h2>
 <p>Raw perturbation scores were converted to robust z-scores based on
@@ -1052,6 +1220,43 @@ activities and patients metadata among tumor samples. As seen in the
 gene-level PCA, the differet tumour subtypes (i.e. IDC-like/ILC-like) is
 still the strongest confounding factor.</em>
 </p>
+</div>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-zmad_pca_tumor-1">
+Past versions of zmad_pca_tumor-1.png
+</button>
+</p>
+<div id="fig-zmad_pca_tumor-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/sSNAPPY.Rmd/zmad_pca_tumor-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 <pre class="r"><code>new_diag_col &lt;- qualitative_hcl(2, palette = &quot;Dark 3&quot;) %&gt;%
     set_names(c(&quot;IDC-like&quot;, &quot;ILC-like&quot;))
@@ -1167,6 +1372,43 @@ treat_sig_tumor %&gt;%
 <em>Pathways that were significantly perturbed in at least one treatment
 &amp; tissue type among tumor sample</em>
 </p>
+</div>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-hp_tumor-1">
+Past versions of hp_tumor-1.png
+</button>
+</p>
+<div id="fig-hp_tumor-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/sSNAPPY.Rmd/hp_tumor-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 </div>
 </div>
@@ -1366,68 +1608,68 @@ other attached packages:
 [67] ggplot2_3.4.2           tidyverse_2.0.0        
 
 loaded via a namespace (and not attached):
-  [1] later_1.3.1                   BiocIO_1.10.0                
-  [3] bitops_1.0-7                  filelock_1.0.2               
-  [5] polyclip_1.10-4               graph_1.78.0                 
-  [7] XML_3.99-0.14                 lifecycle_1.0.3              
-  [9] rprojroot_2.0.3               vroom_1.6.3                  
- [11] lattice_0.21-8                crosstalk_1.2.0              
- [13] sass_0.4.6                    rmarkdown_2.23               
- [15] jquerylib_0.1.4               httpuv_1.6.11                
- [17] minqa_1.2.5                   DBI_1.1.3                    
- [19] zlibbioc_1.46.0               RCurl_1.98-1.12              
- [21] yulab.utils_0.0.6             tweenr_2.0.2                 
- [23] rappdirs_0.3.3                sandwich_3.0-2               
- [25] git2r_0.32.0                  GenomeInfoDbData_1.2.10      
- [27] ggrepel_0.9.3                 MatrixModels_0.5-2           
- [29] codetools_0.2-19              DelayedArray_0.26.6          
- [31] tidyselect_1.2.0              farver_2.1.1                 
- [33] viridis_0.6.4                 matrixStats_1.0.0            
- [35] GenomicAlignments_1.36.0      jsonlite_1.8.7               
- [37] ellipsis_0.3.2                tidygraph_1.2.3              
- [39] tools_4.3.0                   progress_1.2.2               
- [41] Rcpp_1.0.11                   gridExtra_2.3                
- [43] here_1.0.1                    xfun_0.39                    
- [45] MatrixGenerics_1.12.2         numDeriv_2016.8-1.1          
- [47] withr_2.5.0                   BiocManager_1.30.21          
- [49] fastmap_1.1.1                 boot_1.3-28.1                
- [51] fansi_1.0.4                   digest_0.6.33                
- [53] gridGraphics_0.5-1            timechange_0.2.0             
- [55] R6_2.5.1                      mime_0.12                    
- [57] gtools_3.9.4                  biomaRt_2.56.1               
- [59] RSQLite_2.3.1                 utf8_1.2.3                   
- [61] generics_0.1.3                data.table_1.14.8            
- [63] rtracklayer_1.60.0            prettyunits_1.1.1            
- [65] graphlayouts_1.0.0            httr_1.4.6                   
- [67] htmlwidgets_1.6.2             S4Arrays_1.0.4               
- [69] graphite_1.46.0               pkgconfig_2.0.3              
- [71] gtable_0.3.3                  blob_1.2.4                   
- [73] workflowr_1.7.0               XVector_0.40.0               
- [75] ProtGenerics_1.32.0           png_0.1-8                    
- [77] ggfun_0.1.1                   knitr_1.43                   
- [79] rstudioapi_0.15.0             tzdb_0.4.0                   
- [81] reshape2_1.4.4                rjson_0.2.21                 
- [83] nloptr_2.0.3                  nlme_3.1-162                 
- [85] curl_5.0.1                    cachem_1.0.8                 
- [87] zoo_1.8-12                    BiocVersion_3.17.1           
- [89] restfulr_0.0.15               pillar_1.9.0                 
- [91] grid_4.3.0                    vctrs_0.6.3                  
- [93] promises_1.2.0.1              xtable_1.8-4                 
- [95] evaluate_0.21                 cli_3.6.1                    
- [97] locfit_1.5-9.8                compiler_4.3.0               
- [99] Rsamtools_2.16.0              rlang_1.1.1                  
-[101] crayon_1.5.2                  labeling_0.4.2               
-[103] plyr_1.8.8                    fs_1.6.2                     
-[105] stringi_1.7.12                viridisLite_0.4.2            
-[107] BiocParallel_1.34.2           babelgene_22.9               
-[109] munsell_0.5.0                 Biostrings_2.68.1            
-[111] lazyeval_0.2.2                hms_1.1.3                    
-[113] bit64_4.0.5                   statmod_1.5.0                
-[115] KEGGREST_1.40.0               shiny_1.7.4.1                
-[117] highr_0.10                    SummarizedExperiment_1.30.2  
-[119] interactiveDisplayBase_1.38.0 memoise_2.0.1                
-[121] bslib_0.5.0                   fastmatch_1.1-3              
-[123] bit_4.0.5                    </code></pre>
+  [1] fs_1.6.2                      ProtGenerics_1.32.0          
+  [3] matrixStats_1.0.0             bitops_1.0-7                 
+  [5] httr_1.4.6                    numDeriv_2016.8-1.1          
+  [7] tools_4.3.0                   utf8_1.2.3                   
+  [9] R6_2.5.1                      lazyeval_0.2.2               
+ [11] withr_2.5.0                   graphite_1.46.0              
+ [13] prettyunits_1.1.1             gridExtra_2.3                
+ [15] cli_3.6.1                     sandwich_3.0-2               
+ [17] labeling_0.4.2                sass_0.4.6                   
+ [19] Rsamtools_2.16.0              yulab.utils_0.0.6            
+ [21] rstudioapi_0.15.0             RSQLite_2.3.1                
+ [23] generics_0.1.3                gridGraphics_0.5-1           
+ [25] BiocIO_1.10.0                 gtools_3.9.4                 
+ [27] crosstalk_1.2.0               vroom_1.6.3                  
+ [29] fansi_1.0.4                   lifecycle_1.0.3              
+ [31] whisker_0.4.1                 SummarizedExperiment_1.30.2  
+ [33] grid_4.3.0                    blob_1.2.4                   
+ [35] promises_1.2.0.1              crayon_1.5.2                 
+ [37] lattice_0.21-8                KEGGREST_1.40.0              
+ [39] pillar_1.9.0                  knitr_1.43                   
+ [41] rjson_0.2.21                  boot_1.3-28.1                
+ [43] codetools_0.2-19              fastmatch_1.1-3              
+ [45] ggfun_0.1.1                   data.table_1.14.8            
+ [47] vctrs_0.6.3                   png_0.1-8                    
+ [49] gtable_0.3.3                  cachem_1.0.8                 
+ [51] xfun_0.39                     S4Arrays_1.0.4               
+ [53] mime_0.12                     tidygraph_1.2.3              
+ [55] statmod_1.5.0                 interactiveDisplayBase_1.38.0
+ [57] ellipsis_0.3.2                nlme_3.1-162                 
+ [59] bit64_4.0.5                   progress_1.2.2               
+ [61] filelock_1.0.2                rprojroot_2.0.3              
+ [63] bslib_0.5.0                   DBI_1.1.3                    
+ [65] tidyselect_1.2.0              bit_4.0.5                    
+ [67] compiler_4.3.0                curl_5.0.1                   
+ [69] git2r_0.32.0                  graph_1.78.0                 
+ [71] DelayedArray_0.26.6           rtracklayer_1.60.0           
+ [73] rappdirs_0.3.3                digest_0.6.33                
+ [75] minqa_1.2.5                   rmarkdown_2.23               
+ [77] XVector_0.40.0                pkgconfig_2.0.3              
+ [79] MatrixGenerics_1.12.2         highr_0.10                   
+ [81] fastmap_1.1.1                 rlang_1.1.1                  
+ [83] htmlwidgets_1.6.2             shiny_1.7.4.1                
+ [85] farver_2.1.1                  jquerylib_0.1.4              
+ [87] zoo_1.8-12                    jsonlite_1.8.7               
+ [89] BiocParallel_1.34.2           RCurl_1.98-1.12              
+ [91] GenomeInfoDbData_1.2.10       munsell_0.5.0                
+ [93] Rcpp_1.0.11                   babelgene_22.9               
+ [95] viridis_0.6.4                 stringi_1.7.12               
+ [97] zlibbioc_1.46.0               plyr_1.8.8                   
+ [99] ggrepel_0.9.3                 Biostrings_2.68.1            
+[101] graphlayouts_1.0.0            hms_1.1.3                    
+[103] locfit_1.5-9.8                reshape2_1.4.4               
+[105] biomaRt_2.56.1                BiocVersion_3.17.1           
+[107] XML_3.99-0.14                 evaluate_0.21                
+[109] BiocManager_1.30.21           nloptr_2.0.3                 
+[111] tzdb_0.4.0                    tweenr_2.0.2                 
+[113] httpuv_1.6.11                 MatrixModels_0.5-2           
+[115] polyclip_1.10-4               xtable_1.8-4                 
+[117] restfulr_0.0.15               later_1.3.1                  
+[119] viridisLite_0.4.2             memoise_2.0.1                
+[121] GenomicAlignments_1.36.0      workflowr_1.7.0              
+[123] timechange_0.2.0              here_1.0.1                   </code></pre>
 </div>
 </div>
 

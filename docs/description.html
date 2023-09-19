@@ -9,10 +9,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Wenjun Liu Dame Roma Mitchell Cancer Research Laboratories Adelaide Medical School University of Adelaide" />
+<meta name="author" content="Stephen Pederson" />
 
 
-<title>Home</title>
+<title>Description of Workflow</title>
 
 <script src="site_libs/header-attrs-2.23/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
@@ -30,10 +30,17 @@
        h6 {font-size: 12px;}
        code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
        pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <script src="site_libs/navigation-1.1/codefolding.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<script src="site_libs/htmlwidgets-1.6.2/htmlwidgets.js"></script>
+<script src="site_libs/viz-1.8.2/viz.js"></script>
+<link href="site_libs/DiagrammeR-styles-0.2/styles.css" rel="stylesheet" />
+<script src="site_libs/grViz-binding-1.0.10/grViz.js"></script>
 
 <link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
 <!-- Add a small amount of space between sections. -->
@@ -234,6 +241,69 @@ $(document).ready(function () {
 
 
 
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
 
 </head>
 
@@ -241,6 +311,16 @@ $(document).ready(function () {
 
 
 <div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
 
 
 
@@ -328,9 +408,8 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">Home</h1>
-<h4 class="author">Wenjun Liu<br>Dame Roma Mitchell Cancer Research
-Laboratories<br>Adelaide Medical School<br>University of Adelaide</h4>
+<h1 class="title toc-ignore">Description of Workflow</h1>
+<h4 class="author">Stephen Pederson</h4>
 <h4 class="date">19 September, 2023</h4>
 
 </div>
@@ -540,7 +619,6 @@ Untracked files:
     Untracked:  .DS_Store
     Untracked:  data/CellLine_sSNAPPY.rds
     Untracked:  data/EMT_marker.txt
-    Untracked:  hsa04066.pathview.png
 
 Unstaged changes:
     Modified:   analysis/DHT_signal.Rmd
@@ -563,10 +641,11 @@ have uncommitted changes.
 
 <p>
 These are the previous versions of the repository in which changes were
-made to the R Markdown (<code>analysis/index.Rmd</code>) and HTML
-(<code>docs/index.html</code>) files. If you’ve configured a remote Git
-repository (see <code>?wflow_git_remote</code>), click on the hyperlinks
-in the table below to view the files as they were in that past version.
+made to the R Markdown (<code>analysis/description.Rmd</code>) and HTML
+(<code>docs/description.html</code>) files. If you’ve configured a
+remote Git repository (see <code>?wflow_git_remote</code>), click on the
+hyperlinks in the table below to view the files as they were in that
+past version.
 </p>
 <div class="table-responsive">
 <table class="table table-condensed table-hover">
@@ -595,24 +674,7 @@ Message
 Rmd
 </td>
 <td>
-<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/analysis/index.Rmd" target="_blank">4b12097</a>
-</td>
-<td>
-Wenjun-Liu
-</td>
-<td>
-2023-08-02
-</td>
-<td>
-tidy up all Rmd for thesis
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/index.html" target="_blank">4b12097</a>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/analysis/description.Rmd" target="_blank">4b12097</a>
 </td>
 <td>
 Wenjun-Liu
@@ -631,23 +693,186 @@ tidy up all Rmd for thesis
 </div>
 </div>
 </div>
-<p>RNA-Seq data from PDE derived from 17 normal and 8 primary
-ER-positive BC donors.</p>
+<pre class="r"><code>library(tidyverse)
+library(DiagrammeR)
+library(pander)
+library(yaml)</code></pre>
+<pre class="r"><code>config &lt;- here::here(&quot;config/config.yml&quot;) %&gt;%
+  read_yaml()</code></pre>
+<div id="pre-processing-workflow" class="section level1">
+<h1>Pre-Processing Workflow</h1>
+<pre class="r"><code>rm_dot_node &lt;- function(x, node = &quot;all&quot;){
+  nd &lt;- x[grepl(node, x)]
+  id &lt;- str_replace_all(nd, &quot;\\t([0-9]*).label.+&quot;, &quot;\\1&quot;)
+  pat &lt;- paste(c(&quot;(&quot;, node, &quot;| &quot;, id, &quot;$)&quot;), collapse = &quot;&quot;)
+  x[!grepl(pat, x)]
+}
+add_input_node &lt;- function(x, node = &quot;raw_data&quot;, ignore = &quot;(get|build|make)&quot;, col = &quot;0.00 0.00 0.00&quot;, style = &quot;rectangle&quot;){
+  # Find the nodes with no input
+  all_id &lt;- x %&gt;% 
+    str_subset(&quot;label&quot;) %&gt;% 
+    str_replace_all(&quot;\\t([0-9]*).label.+&quot;, &quot;\\1&quot;)
+  has_parent &lt;- x %&gt;% 
+    str_subset(&quot;[0-9]$&quot;) %&gt;% 
+    str_extract(&quot;[0-9]*$&quot;)
+  to_ignore &lt;- x %&gt;% 
+    str_subset(ignore) %&gt;% 
+    str_replace_all(&quot;\\t([0-9]*).label.+&quot;, &quot;\\1&quot;)
+  no_parent &lt;- setdiff(all_id, c(has_parent, to_ignore))
+  # Find the position to insert the node
+  new_id &lt;- as.character(max(as.numeric(all_id)) +1)
+  new_text &lt;- c(
+    &quot;\t&quot;, new_id, 
+    &quot;[label = \&quot;&quot;, node, 
+    &quot;\&quot;, color = \&quot;&quot;, col,
+    &quot;\&quot;, style=\&quot;&quot;, style,
+    &quot;\&quot;];&quot;
+    ) %&gt;%
+    paste(collapse = &quot;&quot;)
+  last_label &lt;- x %&gt;%
+    str_detect(&quot;label&quot;) %&gt;%
+    which() %&gt;%
+    max()
+  ## Add the node
+  x &lt;- c(
+    x[seq_len(last_label)], new_text, x[seq(last_label + 1, length(x))]
+  )
+  new_edges &lt;- paste0(&quot;\t&quot;, paste(new_id, no_parent, sep = &quot; -&gt; &quot;))
+  c(
+    x[seq(1, length(x) - 1)],
+    new_edges,
+    x[length(x)]
+  )
+}</code></pre>
+<div id="workflow-outline" class="section level2">
+<h2>Workflow Outline</h2>
+<p>This is an analysis of RNA-Seq data with the data processing workflow
+derived from <a href="https://github.com/steveped/snakemake_rnaseq_se"
+class="uri">https://github.com/steveped/snakemake_rnaseq_se</a>. The
+pre-processing workflow as implemented in this analysis is as
+follows:</p>
+<pre class="r"><code>here::here(&quot;rules/rulegraph.dot&quot;) %&gt;%
+  readLines() %&gt;%
+  rm_dot_node() %&gt;%
+  add_input_node(node = &quot;RAW DATA&quot;) %&gt;%
+  grViz()</code></pre>
+<div class="figure" style="text-align: center">
+<div class="grViz html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-7cfa795d6cdb10895b7d" style="width:672px;height:480px;"></div>
+<script type="application/json" data-for="htmlwidget-7cfa795d6cdb10895b7d">{"x":{"diagram":"digraph snakemake_dag {\n    graph[bgcolor=white, margin=0];\n    node[shape=box, style=rounded, fontname=sans,                 fontsize=10, penwidth=2];\n    edge[penwidth=2, color=grey];\n\t1[label = \"raw_fastqc\", color = \"0.07 0.6 0.85\", style=\"rounded\"];\n\t2[label = \"adapter_removal\", color = \"0.21 0.6 0.85\", style=\"rounded\"];\n\t3[label = \"trim_fastqc\", color = \"0.56 0.6 0.85\", style=\"rounded\"];\n\t4[label = \"index_bam\", color = \"0.32 0.6 0.85\", style=\"rounded\"];\n\t5[label = \"make_rulegraph\", color = \"0.49 0.6 0.85\", style=\"rounded\"];\n\t6[label = \"count\", color = \"0.60 0.6 0.85\", style=\"rounded\"];\n\t7[label = \"build_wflow_site_index\", color = \"0.28 0.6 0.85\", style=\"rounded\"];\n\t8[label = \"get_annotation\", color = \"0.18 0.6 0.85\", style=\"rounded\"];\n\t9[label = \"get_genome\", color = \"0.00 0.6 0.85\", style=\"rounded\"];\n\t10[label = \"star_index\", color = \"0.11 0.6 0.85\", style=\"rounded\"];\n\t11[label = \"build_qc_raw\", color = \"0.63 0.6 0.85\", style=\"rounded\"];\n\t12[label = \"build_wflow_description\", color = \"0.39 0.6 0.85\", style=\"rounded\"];\n\t13[label = \"star_se\", color = \"0.14 0.6 0.85\", style=\"rounded\"];\n\t14[label = \"create_site_yaml\", color = \"0.35 0.6 0.85\", style=\"rounded\"];\n\t15[label = \"build_qc_aligned\", color = \"0.04 0.6 0.85\", style=\"rounded\"];\n\t16[label = \"build_dge_analysis\", color = \"0.42 0.6 0.85\", style=\"rounded\"];\n\t17[label = \"build_qc_trimmed\", color = \"0.53 0.6 0.85\", style=\"rounded\"];\n\t18[label = \"make_rproj\", color = \"0.25 0.6 0.85\", style=\"rounded\"];\n\t19[label = \"RAW DATA\", color = \"0.00 0.00 0.00\", style=\"rectangle\"];\n\t2 -> 3\n\t13 -> 4\n\t8 -> 6\n\t13 -> 6\n\t15 -> 7\n\t18 -> 7\n\t14 -> 7\n\t12 -> 7\n\t16 -> 7\n\t17 -> 7\n\t11 -> 7\n\t8 -> 10\n\t9 -> 10\n\t18 -> 11\n\t1 -> 11\n\t14 -> 11\n\t18 -> 12\n\t5 -> 12\n\t14 -> 12\n\t2 -> 13\n\t10 -> 13\n\t18 -> 15\n\t13 -> 15\n\t6 -> 15\n\t14 -> 15\n\t15 -> 16\n\t18 -> 16\n\t14 -> 16\n\t18 -> 17\n\t14 -> 17\n\t3 -> 17\n\t19 -> 1\n\t19 -> 2\n\t19 -> 14\n}            ","config":{"engine":"dot","options":null}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+<em>Summary of workflow. Node names indicate snakemake rules</em>
+</p>
+</div>
+</div>
+<div id="parameter-description" class="section level2">
+<h2>Parameter Description</h2>
+<p>Parameters set for the complete workflow are:</p>
 <ul>
-<li>PDEs were treated with Estrogen, DHT, Estrogen + DHT or with Empty
-Vehicle.</li>
-<li>Sequencing was performed by the Genomics Core Facility in Cambridge
-(CRUK CI)</li>
-<li>Sequencing data was generated on 19th June, 2013 (20131906)</li>
+<li><p><strong>samples</strong>: config/samples.tsv</p></li>
+<li><p><strong>ext</strong>: .fq.gz</p></li>
+<li><p><strong>tag</strong>: .r_1</p></li>
+<li><p><strong>ref</strong>:</p>
+<ul>
+<li><strong>build</strong>: GRCh38</li>
+<li><strong>release</strong>: <em>101</em></li>
+<li><strong>root</strong>: /hpcfs/users/a1680844/refs</li>
+<li><strong>seqtype</strong>: primary_assembly</li>
+<li><strong>species</strong>: homo_sapiens</li>
+</ul></li>
+<li><p><strong>star</strong>:</p>
+<ul>
+<li><strong>sjdbOverhang</strong>: <em>39</em></li>
+<li><strong>indexing_extra</strong>:</li>
+<li><strong>align_extra</strong>: –outSAMtype BAM
+SortedByCoordinate</li>
+</ul></li>
+<li><p><strong>fastqc</strong>:</p>
+<ul>
+<li><strong>params</strong>: –nogroup –noextract</li>
+</ul></li>
+<li><p><strong>trimming</strong>:</p>
+<ul>
+<li><strong>adapter1</strong>: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA</li>
+<li><strong>adapter2</strong>:
+AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT</li>
+<li><strong>maxns</strong>: <em>1</em></li>
+<li><strong>minlength</strong>: <em>35</em></li>
+<li><strong>minqual</strong>: <em>30</em></li>
+<li><strong>extra</strong>: –gzip –trimqualities</li>
+</ul></li>
+<li><p><strong>featureCounts</strong>:</p>
+<ul>
+<li><strong>minQual</strong>: <em>1</em></li>
+<li><strong>minOverlap</strong>: <em>35</em></li>
+<li><strong>fracOverlap</strong>: <em>0.9</em></li>
+<li><strong>strandedness</strong>: <em>0</em></li>
+<li><strong>extra</strong>: -M –fraction</li>
+</ul></li>
+<li><p><strong>analysis</strong>:</p>
+<ul>
+<li><strong>group</strong>: treat</li>
+<li><strong>batch</strong>: flowcell_id</li>
+</ul></li>
 </ul>
-<p>As seen in the menus above, pre-processing was performed using an
-automated <code>snakemake</code> workflow, with subsequent analysis
-performed manually in R.</p>
-<p>While the whole study contained both non-malignant and primary
-ER-positive tumour samples, they were not from the same cohort of
-patients hence are not directly comparable. The analyses presented in
-this repository only focus on the tumour samples except for the quality
-control steps, which were performed on all samples.</p>
+<!-- end of list -->
+</div>
+</div>
+<div id="data-description" class="section level1">
+<h1>Data Description</h1>
+<pre class="r"><code>samples &lt;- config$samples %&gt;%
+  here::here() %&gt;%
+  read_tsv() %&gt;%
+  mutate_if(
+    function(x){length(unique(x)) &lt; length(x)},
+    as.factor
+  )
+n_fact &lt;- sum(vapply(samples, is.factor, logical(1)))</code></pre>
+<p>A total of 792 individual fastq files were used as input for the
+workflow. Given the sample sheet, potential predictor variables were
+identified as:</p>
+<ul>
+<li><strong>patient</strong>: <em>TH-1</em>, <em>TH-101</em>,
+<em>TH-102</em>, <em>TH-103</em>, <em>TH-104</em>, <em>TH-105</em>,
+<em>TH-106</em>, <em>TH-107</em>, <em>TH-108</em>, <em>TH-2</em>,
+<em>TH-3</em>, <em>TH-4</em>, <em>TH-5</em>, <em>TH-6</em>,
+<em>TH-7</em>, <em>TH-8</em>, <em>TH-81</em>, <em>TH-82</em>,
+<em>TH-83</em>, <em>TH-84</em>, <em>TH-85</em>, <em>TH-86</em>,
+<em>TH-87</em>, <em>TH-88</em> and <em>TH-89</em></li>
+<li><strong>flowcell_id</strong>: <em>C2FTBACXX</em> and
+<em>C2FUJACXX</em></li>
+<li><strong>treat</strong>: <em>DHT</em>, <em>E2</em>, <em>E2+DHT</em>
+and <em>Veh</em></li>
+<li><strong>Tumor</strong>: <em>FALSE</em> and <em>TRUE</em></li>
+<li><strong>desc</strong>: <em>TH-1 DHT</em>, <em>TH-1 E2</em>, <em>TH-1
+E2+DHT</em>, <em>TH-1 Veh</em>, <em>TH-101 D</em>, <em>TH-101 E</em>,
+<em>TH-101 ED</em>, _TH-101 V*_, <em>TH-102 D</em>, <em>TH-102 E</em>,
+<em>TH-102 ED</em>, <em>TH-102 V</em>, <em>TH-103 D</em>, <em>TH-103
+E</em>, <em>TH-103 ED</em>, <em>TH-103 V</em>, <em>TH-104 D</em>,
+<em>TH-104 E</em>, <em>TH-104 ED</em>, <em>TH-104 V</em>, <em>TH-105
+D</em>, <em>TH-105 E</em>, <em>TH-105 ED</em>, <em>TH-105 V</em>,
+<em>TH-106 D</em>, <em>TH-106 E</em>, <em>TH-106 ED</em>, <em>TH-106
+V</em>, <em>TH-107 D</em>, <em>TH-107 E</em>, <em>TH-107 ED</em>,
+<em>TH-107 V</em>, <em>TH-108 D</em>, <em>TH-108 E</em>, <em>TH-108
+ED</em>, <em>TH-108 V</em>, <em>TH-2 DHT</em>, <em>TH-2 E2</em>,
+<em>TH-2 E2+DHT</em>, <em>TH-2 Veh</em>, <em>TH-3 DHT</em>, <em>TH-3
+E2</em>, <em>TH-3 E2+DHT</em>, <em>TH-3 Veh</em>, <em>TH-4 DHT</em>,
+<em>TH-4 E2</em>, <em>TH-4 E2+DHT</em>, <em>TH-4 Veh</em>, <em>TH-5
+DHT</em>, <em>TH-5 E2</em>, <em>TH-5 E2+DHT</em>, <em>TH-5 Veh</em>,
+<em>TH-6 DHT</em>, <em>TH-6 E2</em>, <em>TH-6 E2+DHT</em>, <em>TH-6
+Veh</em>, <em>TH-7 DHT</em>, <em>TH-7 E2</em>, <em>TH-7 E2+DHT</em>,
+<em>TH-7 Veh</em>, <em>TH-8 E2</em>, <em>TH-8 E2+DHT</em>, <em>TH-8
+Veh</em>, <em>TH-81 D</em>, <em>TH-81 E</em>, <em>TH-81 ED</em>,
+<em>TH-81 V</em>, <em>TH-82 D</em>, <em>TH-82 E</em>, <em>TH-82 ED</em>,
+<em>TH-82 V</em>, <em>TH-83 D</em>, <em>TH-83 E</em>, <em>TH-83 ED</em>,
+<em>TH-83 V</em>, <em>TH-84 D</em>, <em>TH-84 E</em>, <em>TH-84 ED</em>,
+<em>TH-84 V</em>, <em>TH-85 D</em>, <em>TH-85 E</em>, <em>TH-85 ED</em>,
+<em>TH-85 V</em>, <em>TH-86 D</em>, <em>TH-86 E</em>, <em>TH-86 ED</em>,
+<em>TH-86 V</em>, <em>TH-87 D</em>, <em>TH-87 E</em>, <em>TH-87 ED</em>,
+<em>TH-87 V</em>, <em>TH-88 D</em>, <em>TH-88 E</em>, <em>TH-88 ED</em>,
+<em>TH-88 V</em>, <em>TH-89 D</em>, <em>TH-89 E</em>, <em>TH-89 ED</em>
+and <em>TH-89 V</em></li>
+</ul>
+<!-- end of list -->
 <br>
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
@@ -674,17 +899,29 @@ tzcode source: internal
 attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
+other attached packages:
+ [1] yaml_2.3.7        pander_0.6.5      DiagrammeR_1.0.10 lubridate_1.9.2  
+ [5] forcats_1.0.0     stringr_1.5.0     dplyr_1.1.2       purrr_1.0.1      
+ [9] readr_2.1.4       tidyr_1.3.0       tibble_3.2.1      ggplot2_3.4.2    
+[13] tidyverse_2.0.0  
+
 loaded via a namespace (and not attached):
- [1] vctrs_0.6.3       cli_3.6.1         knitr_1.43        rlang_1.1.1      
- [5] xfun_0.39         stringi_1.7.12    promises_1.2.0.1  jsonlite_1.8.7   
- [9] workflowr_1.7.0   glue_1.6.2        rprojroot_2.0.3   git2r_0.32.0     
-[13] htmltools_0.5.5   httpuv_1.6.11     sass_0.4.6        fansi_1.0.4      
-[17] rmarkdown_2.23    jquerylib_0.1.4   evaluate_0.21     tibble_3.2.1     
-[21] fastmap_1.1.1     yaml_2.3.7        lifecycle_1.0.3   whisker_0.4.1    
-[25] stringr_1.5.0     compiler_4.3.0    fs_1.6.2          Rcpp_1.0.11      
-[29] pkgconfig_2.0.3   rstudioapi_0.15.0 later_1.3.1       digest_0.6.33    
-[33] R6_2.5.1          utf8_1.2.3        pillar_1.9.0      magrittr_2.0.3   
-[37] bslib_0.5.0       tools_4.3.0       cachem_1.0.8     </code></pre>
+ [1] sass_0.4.6         utf8_1.2.3         generics_0.1.3     stringi_1.7.12    
+ [5] hms_1.1.3          digest_0.6.33      magrittr_2.0.3     RColorBrewer_1.1-3
+ [9] timechange_0.2.0   evaluate_0.21      grid_4.3.0         fastmap_1.1.1     
+[13] rprojroot_2.0.3    workflowr_1.7.0    jsonlite_1.8.7     whisker_0.4.1     
+[17] promises_1.2.0.1   fansi_1.0.4        scales_1.2.1       jquerylib_0.1.4   
+[21] cli_3.6.1          crayon_1.5.2       rlang_1.1.1        visNetwork_2.1.2  
+[25] bit64_4.0.5        ellipsis_0.3.2     munsell_0.5.0      withr_2.5.0       
+[29] cachem_1.0.8       parallel_4.3.0     tools_4.3.0        tzdb_0.4.0        
+[33] colorspace_2.1-0   httpuv_1.6.11      here_1.0.1         vctrs_0.6.3       
+[37] R6_2.5.1           lifecycle_1.0.3    git2r_0.32.0       bit_4.0.5         
+[41] htmlwidgets_1.6.2  fs_1.6.2           vroom_1.6.3        pkgconfig_2.0.3   
+[45] pillar_1.9.0       bslib_0.5.0        later_1.3.1        gtable_0.3.3      
+[49] glue_1.6.2         Rcpp_1.0.11        xfun_0.39          tidyselect_1.2.0  
+[53] rstudioapi_0.15.0  knitr_1.43         htmltools_0.5.5    rmarkdown_2.23    
+[57] compiler_4.3.0    </code></pre>
+</div>
 </div>
 
 
@@ -703,6 +940,8 @@ footer is added to webpages before the MathJax javascript. -->
 
 
 
+</div>
+</div>
 
 </div>
 
@@ -740,6 +979,35 @@ $(document).ready(function () {
 });
 </script>
 
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
 <script>

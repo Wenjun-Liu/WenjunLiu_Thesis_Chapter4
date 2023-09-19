@@ -425,7 +425,7 @@ div.tocify {
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
 <span class="glyphicon glyphicon-list" aria-hidden="true"></span>
-workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
+workflowr <span class="glyphicon glyphicon-ok text-success"
 aria-hidden="true"></span>
 </button>
 </p>
@@ -436,8 +436,8 @@ aria-hidden="true"></span>
 </li>
 <li>
 <a data-toggle="tab" href="#checks"> Checks <span
-class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> </a>
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -446,13 +446,13 @@ aria-hidden="true"></span> </a>
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2023-08-01
+<strong>Last updated:</strong> 2023-09-19
 </p>
 <p>
 <strong>Checks:</strong> <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 5
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
 <span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> 1
+aria-hidden="true"></span> 0
 </p>
 <p>
 <strong>Knit directory:</strong> <code>WenjunLiu_Thesis_Chapter4/</code>
@@ -472,6 +472,24 @@ versions</em> tab lists the development history.
 </div>
 <div id="checks" class="tab-pane fade">
 <div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
+</div>
+</div>
+</div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
@@ -559,18 +577,68 @@ project makes it easier to run your code on other machines.</p>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongnoversioncontrol">
-<span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> <strong>Repository version:</strong> no
-version control </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomWenjunLiuWenjunLiuThesisChapter4tree772af9f5f126a8b55968d3e50ceb2edda0c03a1dtargetblank772af9fa">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/tree/772af9f5f126a8b55968d3e50ceb2edda0c03a1d" target="_blank">772af9f</a>
+</a>
 </p>
 </div>
-<div id="strongRepositoryversionstrongnoversioncontrol"
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomWenjunLiuWenjunLiuThesisChapter4tree772af9f5f126a8b55968d3e50ceb2edda0c03a1dtargetblank772af9fa"
 class="panel-collapse collapse">
 <div class="panel-body">
-<p>Tracking code development and connecting the code version to the
-results is critical for reproducibility. To start using Git, open the
-Terminal and type <code>git init</code> in your project directory.</p>
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/tree/772af9f5f126a8b55968d3e50ceb2edda0c03a1d" target="_blank">772af9f</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    data/.DS_Store
+    Ignored:    data/aligned/
+    Ignored:    data/knott_scRNA.rds
+    Ignored:    data/knott_scRNA.rds.zip
+    Ignored:    data/raw/
+    Ignored:    data/scRNA_ref/
+    Ignored:    data/trimmed/
+    Ignored:    output/permutedscore_tumor.rds
+    Ignored:    output/tcga_breast.rds
+
+Untracked files:
+    Untracked:  .DS_Store
+    Untracked:  data/CellLine_sSNAPPY.rds
+    Untracked:  data/EMT_marker.txt
+    Untracked:  hsa04066.pathview.png
+
+Unstaged changes:
+    Modified:   analysis/DHT_signal.Rmd
+    Modified:   analysis/IDC_ILC.Rmd
+    Modified:   analysis/hsa04066.pathview.png
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
 </div>
 </div>
 </div>
@@ -578,11 +646,74 @@ Terminal and type <code>git init</code> in your project directory.</p>
 <hr>
 </div>
 <div id="versions" class="tab-pane fade">
+
 <p>
-This project is not being versioned with Git. To obtain the full
-reproducibility benefits of using workflowr, please see
-<code>?wflow_start</code>.
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/E2_signal.Rmd</code>) and HTML
+(<code>docs/E2_signal.html</code>) files. If you’ve configured a remote
+Git repository (see <code>?wflow_git_remote</code>), click on the
+hyperlinks in the table below to view the files as they were in that
+past version.
 </p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/analysis/E2_signal.Rmd" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+<td>
+tidy up all Rmd for thesis
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/E2_signal.html" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+<td>
+tidy up all Rmd for thesis
+</td>
+</tr>
+</tbody>
+</table>
+</div>
 <hr>
 </div>
 </div>
@@ -755,9 +886,9 @@ diag_cols &lt;- readRDS(&quot;~/GSE800098/output/diag_cols.rds&quot;)</code></pr
 #   column_to_rownames(&quot;gene_id&quot;)
 # saveRDS(mergedCounts, here::here(&quot;data/mergedCounts.rds&quot;))
 mergedCounts &lt;- readRDS(here::here(&quot;data/mergedCounts.rds&quot;))</code></pre>
-<pre><code>           used  (Mb) gc trigger  (Mb) limit (Mb) max used  (Mb)
-Ncells 11699233 624.9   17341367 926.2         NA 16445016 878.3
-Vcells 27871322 212.7   46538340 355.1     204800 32177458 245.5</code></pre>
+<pre><code>           used  (Mb) gc trigger   (Mb) limit (Mb) max used  (Mb)
+Ncells 11741852 627.1   18806338 1004.4         NA 15621546 834.3
+Vcells 27927021 213.1   44947274  343.0     204800 36482516 278.4</code></pre>
 <p>The filtered and normalised <code>DGEList</code> was loaded in.</p>
 <pre class="r"><code>dge_tumor &lt;- readRDS(here::here(&quot;output/dge_tumor.rds&quot;))</code></pre>
 <pre class="r"><code>cqNorma_tumor &lt;- with(
@@ -898,6 +1029,43 @@ treat_sig_tumor %&gt;%
 lobular-like PDEs.</em>
 </p>
 </div>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-12-1">
+Past versions of unnamed-chunk-12-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-12-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-12-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <div id="cell-cycle" class="section level2">
 <h2>Cell Cycle</h2>
 <p>11 key genes potentially driving the activation of the Cell cycle
@@ -952,6 +1120,43 @@ tumours, where the columns are annotated with pathway-level perturbation
 scores.</em>
 </p>
 </div>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-14-1">
+Past versions of unnamed-chunk-14-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-14-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-14-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <p>Although not statistically significant in the DE analyses, the median
 single-sample logFC (ssFC) of <em>PLK1</em> and <em>CDK1</em> was
 positive in both IDC- and ILC-like tumours after the E2 treatment. But
@@ -986,6 +1191,43 @@ CC_box &lt;- ssFC_tumor_df %&gt;%
         x = &quot;&quot;)
 CC_box</code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-15-1.png" width="960" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-15-1">
+Past versions of unnamed-chunk-15-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-15-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-15-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 <div id="apoptosis" class="section level2">
 <h2>Apoptosis</h2>
@@ -1032,6 +1274,43 @@ plot_gene_contribution(
     breaks = seq(-8.526216e-05, 8.526216e-05, length.out = 100)
     ) </code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-17-1.png" width="960" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-17-1">
+Past versions of unnamed-chunk-17-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-17-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-17-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <pre class="r"><code>Apop_gene_name &lt;- entrez2name %&gt;%
     dplyr::filter(
         entrezid %in% Apop_gene
@@ -1061,6 +1340,43 @@ apop_box &lt;- ssFC_tumor_df %&gt;%
         x = &quot;&quot;)
 apop_box</code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-18-1.png" width="960" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-18-1">
+Past versions of unnamed-chunk-18-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-18-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-18-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 <div id="jak-stat-signaling-pathway" class="section level2">
 <h2>JAK-STAT signaling pathway</h2>
@@ -1124,6 +1440,43 @@ plot_gene_contribution(
     breaks = seq(-0.00003, 0.00003, length.out = 100)
     ) </code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-20-1.png" width="960" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-20-1">
+Past versions of unnamed-chunk-20-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-20-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-20-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <pre class="r"><code># pathview(gene.data  =  ssFC_tumor %&gt;%
 #              .[rownames(.) %in% JAR_gene, colnames(.) %in% lobular_E2_sample] %&gt;%
 #              apply(., 1, median) %&gt;%
@@ -1168,6 +1521,43 @@ knitr::include_graphics(
         x = &quot;&quot;)
 CDKN1A_box</code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-22-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-22-1">
+Past versions of unnamed-chunk-22-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-22-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-22-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 <div id="wnt-signaling" class="section level2">
 <h2>WNT signaling</h2>
@@ -1213,6 +1603,43 @@ plot_gene_contribution(
     breaks = seq(-0.00003, 0.00003, length.out = 100)
     ) </code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-24-1.png" width="960" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-24-1">
+Past versions of unnamed-chunk-24-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-24-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-24-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <pre class="r"><code>wnt_complex &lt;- entrez2name %&gt;%
     dplyr::filter(
         entrezid %in% WNT_gene, 
@@ -1247,6 +1674,43 @@ wnt_box &lt;- ssFC_tumor_df %&gt;%
         x = &quot;&quot;)
 wnt_box</code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-25-1.png" width="960" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-25-1">
+Past versions of unnamed-chunk-25-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-25-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-25-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 <div id="hif-signalling-pathway" class="section level2">
 <h2>HIF signalling pathway</h2>
@@ -1279,7 +1743,7 @@ plot_gene_contribution(
     HIF_genePert %&gt;%
         .[rownames(.) %in% HIF_gene, colnames(.) %in% lobular_E2_sample],
     filterBy = &quot;mean&quot;, 
-    annotation_df = anno_df_WNT, 
+    annotation_df = anno_df_HIF, 
     mapEntrezID = entrez2name, 
     topGene = 10,
     annotation_colors = list(
@@ -1292,6 +1756,43 @@ plot_gene_contribution(
     breaks = seq(-0.00003, 0.00003, length.out = 100)
     ) </code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-27-1.png" width="960" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-27-1">
+Past versions of unnamed-chunk-27-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-27-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-27-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <pre class="r"><code>HIF_gene_name &lt;- entrez2name %&gt;%
     dplyr::filter(
         entrezid %in% HIF_gene
@@ -1321,6 +1822,43 @@ hif_box &lt;- ssFC_tumor_df %&gt;%
         x = &quot;&quot;)
 hif_box</code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-28-1.png" width="960" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-28-1">
+Past versions of unnamed-chunk-28-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-28-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-28-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 </div>
 <div id="compare-to-public-data" class="section level1">
@@ -1589,6 +2127,43 @@ changes upon E2 treatment reported in the public data, where blue means
 E2-repressed and red means E2-induced.</em>
 </p>
 </div>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-36-1">
+Past versions of unnamed-chunk-36-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-36-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-36-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 </div>
 <div id="nardone-et-al.-foxa1-ilc-targets" class="section level2">
@@ -1648,6 +2223,43 @@ lobular_e2_fcDir &lt;- ifelse(lobular_e2_fc &lt; 0, &quot;Down-regulated&quot;, 
         legend.margin=margin(0,0,0,0))
 g</code></pre>
 <p><img src="figure/E2_signal.Rmd/unnamed-chunk-39-1.png" width="1344" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-39-1">
+Past versions of unnamed-chunk-39-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-39-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/Wenjun-Liu/WenjunLiu_Thesis_Chapter4/blob/4b1209781ee751444ce0c6a132ac20b5edfee771/docs/figure/E2_signal.Rmd/unnamed-chunk-39-1.png" target="_blank">4b12097</a>
+</td>
+<td>
+Wenjun-Liu
+</td>
+<td>
+2023-08-02
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 </div>
 <div id="thesis-figure" class="section level1">
@@ -1797,17 +2409,17 @@ g</code></pre>
 <pre class="r"><code># p1 &lt;- plot_gene_contribution(
 #     HIF_genePert %&gt;%
 #         .[rownames(.) %in% HIF_gene, colnames(.) %in% lobular_E2_sample],
-#     filterBy = &quot;mean&quot;, 
-#     annotation_df = anno_df_WNT, 
-#     mapEntrezID = entrez2name, 
+#     filterBy = &quot;mean&quot;,
+#     annotation_df = anno_df_HIF,
+#     mapEntrezID = entrez2name,
 #     topGene = 10,
 #     annotation_colors = list(
 #         `Z Range` = setNames(
 #             colorRampPalette(c(&quot;navyblue&quot;, &quot;white&quot;, &quot;darkred&quot;))(length(levels(anno_df_HIF$`Z Range`))),
 #             levels(anno_df_HIF$`Z Range`)
-#         )), 
+#         )),
 #     clustering_method = &quot;average&quot;,
-#     color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)), 
+#     color = rev(divergex_hcl(100, palette = &quot;RdBu&quot;)),
 #     breaks = seq(-0.00003, 0.00003, length.out = 100)
 #     ) %&gt;%
 #     as.ggplot()
@@ -1819,7 +2431,7 @@ g</code></pre>
 #                   plot_layout(widths = c(0.3, 0.2))) +
 #     plot_annotation(tag_levels = &quot;A&quot;)  &amp;
 #     theme(
-#         plot.tag = element_text(size = 22, face = &quot;bold&quot; ), 
+#         plot.tag = element_text(size = 22, face = &quot;bold&quot; ),
 #         text = element_text(size = 14)
 #     )
 # png(
@@ -1940,60 +2552,61 @@ loaded via a namespace (and not attached):
  [35] crosstalk_1.2.0               vroom_1.6.3                  
  [37] gtools_3.9.4                  GO.db_3.17.0                 
  [39] fansi_1.0.4                   lifecycle_1.0.3              
- [41] edgeR_3.42.4                  SummarizedExperiment_1.30.2  
- [43] qvalue_2.32.0                 grid_4.3.0                   
- [45] blob_1.2.4                    promises_1.2.0.1             
- [47] crayon_1.5.2                  lattice_0.21-8               
- [49] KEGGREST_1.40.0               pillar_1.9.0                 
- [51] knitr_1.43                    fgsea_1.26.0                 
- [53] rjson_0.2.21                  boot_1.3-28.1                
- [55] codetools_0.2-19              fastmatch_1.1-3              
- [57] glue_1.6.2                    downloader_0.4               
- [59] ggfun_0.1.1                   data.table_1.14.8            
- [61] treeio_1.24.1                 vctrs_0.6.3                  
- [63] png_0.1-8                     cellranger_1.1.0             
- [65] gtable_0.3.3                  cachem_1.0.8                 
- [67] xfun_0.39                     S4Arrays_1.0.4               
- [69] mime_0.12                     tidygraph_1.2.3              
- [71] pheatmap_1.0.12               interactiveDisplayBase_1.38.0
- [73] ellipsis_0.3.2                nlme_3.1-162                 
- [75] ggtree_3.8.0                  bit64_4.0.5                  
- [77] progress_1.2.2                filelock_1.0.2               
- [79] rprojroot_2.0.3               bslib_0.5.0                  
- [81] DBI_1.1.3                     tidyselect_1.2.0             
- [83] bit_4.0.5                     compiler_4.3.0               
- [85] curl_5.0.1                    git2r_0.32.0                 
- [87] graph_1.78.0                  DelayedArray_0.26.6          
- [89] shadowtext_0.1.2              rtracklayer_1.60.0           
- [91] rappdirs_0.3.3                digest_0.6.33                
- [93] minqa_1.2.5                   rmarkdown_2.23               
- [95] XVector_0.40.0                pkgconfig_2.0.3              
- [97] MatrixGenerics_1.12.2         highr_0.10                   
- [99] fastmap_1.1.1                 rlang_1.1.1                  
-[101] htmlwidgets_1.6.2             shiny_1.7.4.1                
-[103] farver_2.1.1                  jquerylib_0.1.4              
-[105] zoo_1.8-12                    jsonlite_1.8.7               
-[107] BiocParallel_1.34.2           GOSemSim_2.26.1              
-[109] RCurl_1.98-1.12               GenomeInfoDbData_1.2.10      
-[111] munsell_0.5.0                 Rcpp_1.0.11                  
-[113] ape_5.7-1                     babelgene_22.9               
-[115] viridis_0.6.4                 stringi_1.7.12               
-[117] zlibbioc_1.46.0               plyr_1.8.8                   
-[119] parallel_4.3.0                ggrepel_0.9.3                
-[121] Biostrings_2.68.1             graphlayouts_1.0.0           
-[123] hms_1.1.3                     locfit_1.5-9.8               
-[125] reshape2_1.4.4                biomaRt_2.56.1               
-[127] BiocVersion_3.17.1            XML_3.99-0.14                
-[129] evaluate_0.21                 BiocManager_1.30.21          
-[131] nloptr_2.0.3                  tzdb_0.4.0                   
-[133] tweenr_2.0.2                  httpuv_1.6.11                
-[135] MatrixModels_0.5-2            polyclip_1.10-4              
-[137] ggforce_0.4.1                 xtable_1.8-4                 
-[139] restfulr_0.0.15               tidytree_0.4.2               
-[141] later_1.3.1                   viridisLite_0.4.2            
-[143] aplot_0.1.10                  memoise_2.0.1                
-[145] GenomicAlignments_1.36.0      workflowr_1.7.0              
-[147] timechange_0.2.0              here_1.0.1                   </code></pre>
+ [41] whisker_0.4.1                 edgeR_3.42.4                 
+ [43] SummarizedExperiment_1.30.2   qvalue_2.32.0                
+ [45] grid_4.3.0                    blob_1.2.4                   
+ [47] promises_1.2.0.1              crayon_1.5.2                 
+ [49] lattice_0.21-8                KEGGREST_1.40.0              
+ [51] pillar_1.9.0                  knitr_1.43                   
+ [53] fgsea_1.26.0                  rjson_0.2.21                 
+ [55] boot_1.3-28.1                 codetools_0.2-19             
+ [57] fastmatch_1.1-3               glue_1.6.2                   
+ [59] downloader_0.4                ggfun_0.1.1                  
+ [61] data.table_1.14.8             treeio_1.24.1                
+ [63] vctrs_0.6.3                   png_0.1-8                    
+ [65] cellranger_1.1.0              gtable_0.3.3                 
+ [67] cachem_1.0.8                  xfun_0.39                    
+ [69] S4Arrays_1.0.4                mime_0.12                    
+ [71] tidygraph_1.2.3               pheatmap_1.0.12              
+ [73] interactiveDisplayBase_1.38.0 ellipsis_0.3.2               
+ [75] nlme_3.1-162                  ggtree_3.8.0                 
+ [77] bit64_4.0.5                   progress_1.2.2               
+ [79] filelock_1.0.2                rprojroot_2.0.3              
+ [81] bslib_0.5.0                   DBI_1.1.3                    
+ [83] tidyselect_1.2.0              bit_4.0.5                    
+ [85] compiler_4.3.0                curl_5.0.1                   
+ [87] git2r_0.32.0                  graph_1.78.0                 
+ [89] DelayedArray_0.26.6           shadowtext_0.1.2             
+ [91] rtracklayer_1.60.0            rappdirs_0.3.3               
+ [93] digest_0.6.33                 minqa_1.2.5                  
+ [95] rmarkdown_2.23                XVector_0.40.0               
+ [97] pkgconfig_2.0.3               MatrixGenerics_1.12.2        
+ [99] highr_0.10                    fastmap_1.1.1                
+[101] rlang_1.1.1                   htmlwidgets_1.6.2            
+[103] shiny_1.7.4.1                 farver_2.1.1                 
+[105] jquerylib_0.1.4               zoo_1.8-12                   
+[107] jsonlite_1.8.7                BiocParallel_1.34.2          
+[109] GOSemSim_2.26.1               RCurl_1.98-1.12              
+[111] GenomeInfoDbData_1.2.10       munsell_0.5.0                
+[113] Rcpp_1.0.11                   ape_5.7-1                    
+[115] babelgene_22.9                viridis_0.6.4                
+[117] stringi_1.7.12                zlibbioc_1.46.0              
+[119] plyr_1.8.8                    parallel_4.3.0               
+[121] ggrepel_0.9.3                 Biostrings_2.68.1            
+[123] graphlayouts_1.0.0            hms_1.1.3                    
+[125] locfit_1.5-9.8                reshape2_1.4.4               
+[127] biomaRt_2.56.1                BiocVersion_3.17.1           
+[129] XML_3.99-0.14                 evaluate_0.21                
+[131] BiocManager_1.30.21           nloptr_2.0.3                 
+[133] tzdb_0.4.0                    tweenr_2.0.2                 
+[135] httpuv_1.6.11                 MatrixModels_0.5-2           
+[137] polyclip_1.10-4               ggforce_0.4.1                
+[139] xtable_1.8-4                  restfulr_0.0.15              
+[141] tidytree_0.4.2                later_1.3.1                  
+[143] viridisLite_0.4.2             aplot_0.1.10                 
+[145] memoise_2.0.1                 GenomicAlignments_1.36.0     
+[147] workflowr_1.7.0               timechange_0.2.0             
+[149] here_1.0.1                   </code></pre>
 </div>
 </div>
 </div>
