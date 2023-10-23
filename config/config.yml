@@ -3,7 +3,7 @@ samples: config/samples.tsv
 # The file extension. Usually one of .fq.gz/.fastq.gz/.fq/.fastq
 # Any additional 'tag' such as _R1_001 which trails the values provided
 # in the samples file should be specified as the tag
-ext: .fq.gz
+ext: .fastq.gz
 tag: .r_1
 
 # The root argument tells you where the genome will be located
