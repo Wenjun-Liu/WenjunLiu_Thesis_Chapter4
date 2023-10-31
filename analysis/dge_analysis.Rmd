@@ -42,6 +42,7 @@ library(goseq)
 library(WGCNA)
 library(reactable)
 library(ggforce)
+library(DESeq2)
 ```
 
 ```{r options}
@@ -86,6 +87,7 @@ containing information for `r comma(length(genesGR))` genes.
 Dominant cell types (stroma, epithelial, ducts or fat) at the time of tissue collection were recorded and this was read in. 
 
 ```{r init_cellType}
+readr::local_edition(1)
 init_cellType <- read_delim(here::here("config/sample_meta.txt"), delim = "\t")
 init_cellType <- init_cellType %>%
     mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex("Stroma", ignore_case = T)), TRUE, FALSE), 
@@ -646,6 +648,7 @@ out
 }
 ```
 
+## `edgeR`
 Average treatment responses among tumor samples were tested through fitting quasi-likelihood negative binomial GLMs through `edgeR`.
 
 ```{r fit_tumor}
@@ -717,6 +720,43 @@ topTables_tumor %>%
         c("logFC", "Direction"),
         color = styleEqual(c("Down", "Up"), c('blue', 'red'))
     )
+```
+
+## limma-voom
+
+The differential expression analysis was also performed using the limma-voom frame. To begin first, voom weights are constructed basing on the. mean-variance trend in the expression to down-weight genes with low expression level but high variance. 
+
+```{r, fig.cap="*The mean-variance trend in the tumour expression data fitted by voom*}
+voom <- voom(dge_tumor, X_tumor, plot = T)
+```
+
+Linear models are then fitted using the same design matrix designed above while incorporating the voom weights. No DEG was detected by the limma-voom method in any of the treatment either. 
+
+```{r}
+fit_limma <- lmFit(voom, X_tumor)
+fit_limma <- eBayes(fit_limma)
+topTables_limma <- str_subset(colnames(coef(fit_limma)), "patient", TRUE) %>%
+    str_subset("patient", TRUE) %>%
+    sapply(function(x){
+        topTable(fit_limma, coef = x, n = Inf)%>%
+            as_tibble() %>%
+            mutate(
+                coef = x,
+                location = paste0(seqnames, ":", start, "-", end, ":", strand),
+                rankingStat = -sign(logFC)*log10(P.Value),
+                FDR = p.adjust(P.Value, "fdr"),
+                signedRank = rank(rankingStat),
+                DE = FDR < alpha
+            ) %>%
+            dplyr::select(
+                gene_id, gene_name, logFC, P.Value, FDR, coef,
+                location, gene_biotype, entrezid, ave_tx_len, gc_content,
+                rankingStat, signedRank, DE
+            )
+    },
+    simplify = FALSE)
+topTables_limma %>%
+    lapply(dplyr::filter, DE)
 ```
 
 

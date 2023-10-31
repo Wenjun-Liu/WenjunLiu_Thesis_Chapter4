@@ -64,6 +64,7 @@ library(ExperimentHub)
 library(singscore)
 library(grid)
 library(goseq)
+library(VennDiagram)
 source(here::here("analysis/smallFunctions/make_gsNetwork.R"))
 ```
 
@@ -157,6 +158,7 @@ mcols(genesGR) <- mcols(genesGR) %>%
 Sample metadata and merged counts for tumour samples were read in and filtered as in the [dge analysis](dge_analysis.html). A `DGElist` was formed and `cqn` was applied for biases introduced by systematic artefacts.
 
 ```{r init_cellType}
+readr::local_edition(1)
 init_cellType <- read_delim(here::here("config/sample_meta.txt"), delim = "\t")
 init_cellType <- init_cellType %>%
     mutate(Stroma = ifelse(str_detect(Dominant_cell_type, regex("Stroma", ignore_case = T)), TRUE, FALSE), 
@@ -938,6 +940,7 @@ To further validate the sPLS-DA classifier, RNA-Seq expression profiling of 81 b
 ```{r, message=FALSE, echo=FALSE}
 library(recount3)
 library(SummarizedExperiment)
+readr::local_edition(1)
 public_CellLine <- recount3::create_rse_manual(
     project = "SRP064259",
     project_home = "data_sources/sra",
@@ -948,7 +951,7 @@ public_CellLine <- recount3::create_rse_manual(
 #scale the counts using the AUC
 assays(public_CellLine)$counts <- recount3::transform_counts(public_CellLine)
 cell_meta <- colData(public_CellLine)
-cell_subtype <- read_delim(
+cell_subtype <- read_table(
     here::here("data/cell_line_subtypes.txt")
 ) %>%
     mutate(cell_line = str_to_upper(cell_line))
@@ -1707,567 +1710,600 @@ logCPM_tumor %>%
 
 Code used to generate figures for the thesis.
 
+## Supp table patient info
+
+```{r}
+tumor_sample %>%
+    mutate(
+        Diagnosis = ifelse(
+            Diagnosis == "ILC-like", 
+            "invasive carcinoma of no special type",
+            "infiltrating carcinoma of no special type"
+        )
+    ) %>%
+    ungroup() %>%
+    dplyr::select(
+        Patient = patient, Age, `Pathological Label` = Diagnosis
+    ) %>%
+    unique() %>% xtable::xtable(
+        caption = "Age and pathological label of the 8 donors who we received the primary tumours from.",
+        label = "pat_info"
+    )  %>%
+    xtable::print.xtable(
+        "~/PhD_thesis/draft_figure/chapter_04/pat_info.tex", type = "latex",
+        caption.placement = "top",
+        include.rownames = FALSE,
+        sanitize.text.function = function(x) x)
+```
+
 ## Figure 4.2
 
 ```{r, fig.width=12, fig.height=10}
-# tumor_sample <- tumor_sample %>%
-#     .[match(rownames(pcaPost_tumor$x), .$name),]
-# pcaPost_tumor_df <- pcaPost_tumor$x %>%
-#     as.data.frame() %>%
-#     rownames_to_column("name") %>%
-#     left_join(
-#         tumor_sample
-#     )
-# chap4_1a <- pcaPost_tumor_df %>%
-#     ggplot(
-#         aes(PC1, PC2)
-#     ) +
-#     geom_point(aes( color = patient, shape = treat), 
-#                size = 3) +
-#     scale_shape_manual(values = treat_shapes) +
-#     labs(
-#         colour = "Patient",
-#         fill = "Patient",
-#         shape = "Treatment"
-#     ) +
-#     geom_mark_ellipse(
-#         aes(
-#             # label = patient,
-#             fill = patient
-#         ), 
-#         # label.fontsize = 9
-#     ) +
-#     guides( fill = FALSE,
-#             # color = guide_legend(nrow = 2), 
-#             # shape = guide_legend(nrow = 2)
-#             ) +
-#     theme(
-#         # legend.position = "top", 
-#         # legend.justification = "right"
-#     )
-# ```
-# 
-# ```{r}
-# chap4_1b <- pcaPost_tumor$x %>%
-#     as.data.frame() %>%
-#     rownames_to_column("name") %>%
-#     left_join(tumor_sample) %>%
-#     dplyr::select(PC1, PC2, PC3, patient, treat,  Diagnosis) %>%
-#     dplyr::rename(
-#         Treatment = treat,
-#         Patient = patient,
-#         `Pathology Diagnosis` = Diagnosis
-#     ) %>%
-#     mutate(
-#            `Pathology Diagnosis` = as.factor(`Pathology Diagnosis`),
-#            across(everything(), as.numeric)) %>%
-#     cor() %>%
-#     reshape2::melt() %>%
-#     dplyr::filter(
-#         Var1 != Var2, 
-#         # !str_detect(Var1, "PC") & str_detect(Var2, "PC")
-#         ) %>%
-#     .[!duplicated(.$value),] %>%
-#     ggplot(
-#         aes(x = Var1, y = Var2, fill = value)) +
-#     geom_tile() +
-#     scale_fill_distiller(palette = "RdBu", 
-#                          limit = c(-1, 1)) +
-#     scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
-#     scale_y_discrete(labels = function(x) str_wrap(x, width = 10)) +
-#     labs(x = "", y = "", fill = "Correlation") +
-#     theme(
-#         panel.background = element_blank() ,
-#         panel.grid = element_blank(), 
-#         panel.border = element_blank(),
-#         # plot.margin = unit(c(0, 0, 0, 0), "mm"),
-#         axis.ticks = element_blank(), 
-#         legend.position = "top", 
-#         legend.justification = "right",
-#         legend.key.width = unit(0.8, "cm")
-#     ) +
-#     geom_text(aes(x = Var1, y = Var2, label = round(value, 2)), color = "black", 
-#                size = 4)
-# ```
-# 
-# ```{r}
-# pcaPost_tumor_veh <- logCPM_tumor %>%
-#     .[, str_detect(colnames(.), "Veh")] %>%
-#     t() %>%
-#     prcomp() 
-# chap4_1c <- pcaPost_tumor_veh %>%
-#     autoplot(
-#         data = dge_tumor$samples %>%
-#             dplyr::filter(treat == "Veh"), 
-#         x = 1, y = 2,
-#         colour = "Diagnosis", 
-#         shape = "treat",
-#         size = 5
-#     ) +
-#     scale_shape_manual(values = treat_shapes) +
-#     guides(shape = FALSE) +
-#     scale_color_manual(values = c(
-#         "infiltrating carcinoma of no special type" = "#E16A86",
-#             "invasive carcinoma of no special type" = "#00AD9A"
-#     ), 
-#     name = "Pathologist\nLabel") +
-#     geom_label_repel(
-#         data = . %>%
-#             dplyr::filter(patient == "Tumor-8"),
-#         aes(label = patient),
-#         size = 4) +
-#     labs(
-#         colour = "Diagnosis",
-#         shape = "Treatment", 
-#         x = "PC1", 
-#         y = "PC2"
-#     ) +
-#     theme(
-#         legend.position = "none"
-#     )
-# ```
-# 
-# 
-# ```{r}
-# chap4_1d <- logCPM_tumor %>%
-#     as.data.frame() %>%
-#     rownames_to_column("gene_id") %>%
-#     pivot_longer(
-#         cols = -"gene_id", 
-#         names_to = "name", 
-#         values_to = "logCPM"
-#     ) %>%
-#     left_join(dge_tumor$samples) %>%
-#     left_join(dge_tumor$genes) %>%
-#     dplyr::filter(
-#         gene_name %in% c("CDH1", "FOXA1" ,"PTEN"), 
-#         # treat == "Veh"
-#         ) %>%
-#     mutate(
-#         Diagnosis = str_to_title(Diagnosis),
-#         Diagnosis = str_wrap(Diagnosis, width = 20)
-#         ) %>%
-#     ggplot(
-#         aes(Diagnosis, logCPM, fill = Diagnosis)
-#     ) +
-#     geom_boxplot() +
-#     geom_point() +
-#     facet_wrap(~gene_name) +
-#     scale_fill_discrete_qualitative(name = "Pathologist Label") +
-#     xlab("") +
-#     theme(
-#         panel.grid = element_blank(), 
-#         axis.text.x = element_blank(), 
-#         axis.ticks.x = element_blank(),
-#         # legend.position = "top"
-#     )
-# ```
-# 
-# ```{r}
-# chap4_1e <- pred_result %>%
-#     mutate(
-#         Type = ifelse(
-#             Type == "sPLS-DA prediction", "sPLS-DA", "Pathologist Label"
-#         )
-#     )  %>%
-#     ggplot(
-#         aes(
-#             str_wrap(Type, 10),  
-#             patient, 
-#             color = str_wrap(Subtype, 15)
-#             )
-#     ) +
-#     geom_point(
-#         size = 4, 
-#         # aes(shape = Type)
-#     ) +
-#     scale_color_manual(
-#         values = diag_cols %>%
-#             set_names(str_wrap(names(diag_cols), 7)), 
-#         name = "Subtype"
-#     ) +
-#     coord_fixed(0.3) +
-#     labs( x = "", y = "") +
-#     theme(
-#         axis.text.y = element_text(
-#             color = c( rep("black", 7), "red")
-#         )
-#     )
-# # +
-# #     guides(color=guide_legend(ncol=2)) 
-# ```
-# 
-# ```{r}
-# library(gridGraphics)
-# library(grid)
-# 
-# # ## grab the scene as a grid object & save it to P1
-# # grid.echo()
-# # chap4_1f <- grid.grab()
+tumor_sample <- tumor_sample %>%
+    .[match(rownames(pcaPost_tumor$x), .$name),]
+pcaPost_tumor_df <- pcaPost_tumor$x %>%
+    as.data.frame() %>%
+    rownames_to_column("name") %>%
+    left_join(
+        tumor_sample
+    )
+chap4_1a <- pcaPost_tumor_df %>%
+    ggplot(
+        aes(PC1, PC2)
+    ) +
+    geom_point(aes( color = patient, shape = treat),
+               size = 3) +
+    scale_shape_manual(values = treat_shapes) +
+    labs(
+        colour = "Patient",
+        fill = "Patient",
+        shape = "Treatment"
+    ) +
+    geom_mark_ellipse(
+        aes(
+            # label = patient,
+            fill = patient
+        ),
+        # label.fontsize = 9
+    ) +
+    guides( fill = FALSE,
+            # color = guide_legend(nrow = 2),
+            # shape = guide_legend(nrow = 2)
+            ) +
+    theme(
+        # legend.position = "top",
+        # legend.justification = "right"
+    )
+```
+
+```{r}
+chap4_1b <- pcaPost_tumor$x %>%
+    as.data.frame() %>%
+    rownames_to_column("name") %>%
+    left_join(tumor_sample) %>%
+    dplyr::select(PC1, PC2, PC3, patient, treat,  Diagnosis) %>%
+    dplyr::rename(
+        Treatment = treat,
+        Patient = patient,
+        `Pathology Diagnosis` = Diagnosis
+    ) %>%
+    mutate(
+           `Pathology Diagnosis` = as.factor(`Pathology Diagnosis`),
+           across(everything(), as.numeric)) %>%
+    cor() %>%
+    reshape2::melt() %>%
+    dplyr::filter(
+        Var1 != Var2,
+        # !str_detect(Var1, "PC") & str_detect(Var2, "PC")
+        ) %>%
+    .[!duplicated(.$value),] %>%
+    ggplot(
+        aes(x = Var1, y = Var2, fill = value)) +
+    geom_tile() +
+    scale_fill_distiller(palette = "RdBu",
+                         limit = c(-1, 1)) +
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+    scale_y_discrete(labels = function(x) str_wrap(x, width = 10)) +
+    labs(x = "", y = "", fill = "Correlation") +
+    theme(
+        panel.background = element_blank() ,
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        # plot.margin = unit(c(0, 0, 0, 0), "mm"),
+        axis.ticks = element_blank(),
+        legend.position = "top",
+        legend.justification = "right",
+        legend.key.width = unit(0.8, "cm")
+    ) +
+    geom_text(aes(x = Var1, y = Var2, label = round(value, 2)), color = "black",
+               size = 4)
+```
+
+```{r}
+pcaPost_tumor_veh <- logCPM_tumor %>%
+    .[, str_detect(colnames(.), "Veh")] %>%
+    t() %>%
+    prcomp()
+chap4_1c <- pcaPost_tumor_veh %>%
+    autoplot(
+        data = dge_tumor$samples %>%
+            dplyr::filter(treat == "Veh"),
+        x = 1, y = 2,
+        colour = "Diagnosis",
+        shape = "treat",
+        size = 5
+    ) +
+    scale_shape_manual(values = treat_shapes) +
+    guides(shape = FALSE) +
+    scale_color_manual(values = c(
+        "infiltrating carcinoma of no special type" = "#E16A86",
+            "invasive carcinoma of no special type" = "#00AD9A"
+    ),
+    name = "Pathologist\nLabel") +
+    geom_label_repel(
+        data = . %>%
+            dplyr::filter(patient == "Tumor-8"),
+        aes(label = patient),
+        size = 4) +
+    labs(
+        colour = "Diagnosis",
+        shape = "Treatment",
+        x = "PC1",
+        y = "PC2"
+    ) +
+    theme(
+        legend.position = "none"
+    )
+```
+
+
+```{r}
+chap4_1d <- logCPM_tumor %>%
+    as.data.frame() %>%
+    rownames_to_column("gene_id") %>%
+    pivot_longer(
+        cols = -"gene_id",
+        names_to = "name",
+        values_to = "logCPM"
+    ) %>%
+    left_join(dge_tumor$samples) %>%
+    left_join(dge_tumor$genes) %>%
+    dplyr::filter(
+        gene_name %in% c("CDH1", "FOXA1" ,"PTEN"),
+        # treat == "Veh"
+        ) %>%
+    mutate(
+        Diagnosis = str_to_title(Diagnosis),
+        Diagnosis = str_wrap(Diagnosis, width = 20)
+        ) %>%
+    ggplot(
+        aes(Diagnosis, logCPM, fill = Diagnosis)
+    ) +
+    geom_boxplot() +
+    geom_point() +
+    facet_wrap(~gene_name) +
+    scale_fill_discrete_qualitative(name = "Pathologist Label") +
+    geom_text_repel(
+        aes(label = patient), 
+        data = . %>%
+            dplyr::filter(
+                patient == "Tumor-2", 
+                gene_name == "CDH1")
+    ) +
+    xlab("") +
+    theme(
+        panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        # legend.position = "top"
+    )
+```
+
+```{r}
+chap4_1e <- pred_result %>%
+    mutate(
+        Type = ifelse(
+            Type == "sPLS-DA prediction", "sPLS-DA", "Pathologist Label"
+        )
+    )  %>%
+    ggplot(
+        aes(
+            str_wrap(Type, 10),
+            patient,
+            color = str_wrap(Subtype, 15)
+            )
+    ) +
+    geom_point(
+        size = 4,
+        # aes(shape = Type)
+    ) +
+    scale_color_manual(
+        values = diag_cols %>%
+            set_names(str_wrap(names(diag_cols), 7)),
+        name = "Subtype"
+    ) +
+    coord_fixed(0.3) +
+    labs( x = "", y = "") +
+    theme(
+        axis.text.y = element_text(
+            color = c( rep("black", 7), "red")
+        )
+    )
+# +
+#     guides(color=guide_legend(ncol=2))
+```
+
+```{r}
+library(gridGraphics)
+library(grid)
+
+# ## grab the scene as a grid object & save it to P1
+# grid.echo()
+# chap4_1f <- grid.grab()
+png(
+     "/Users/wenjunliu/PhD_thesis/draft_figure/chapter_04/loading.png",
+    width = 150, height =130, units='mm', res = 300
+)
+plotLoadings(splsda.final, contrib = 'max', method = 'median', comp = 1,
+             title = "" ,size.name = 1,
+             # legend.title = "Subtype", size.legend = 2,
+             legend.color = diag_cols[c("IDC", "ILC")],
+             legend = FALSE
+             )
+dev.off()
+library(magick)
+chap4_1f  <- image_read(path = "/Users/wenjunliu/PhD_thesis/draft_figure/chapter_04/loading.png") %>%
+    image_ggplot()
+```
+
+```{r}
+library(patchwork)
+chap4_fig1 <- plot_grid(
+    plot_grid(
+        chap4_1a, chap4_1b,
+        rel_widths = c(0.6, 0.4),
+        labels = c("A", "B")
+    ),
+    plot_grid(
+        chap4_1c &
+            theme(
+                text = element_text(size = 14)
+            ), chap4_1d &
+            theme(
+                strip.text  = element_text(size = 12),
+                legend.text = element_text(size = 11),
+                legend.title = element_text(size = 12),
+                plot.margin = unit(c(0, 0, 0.5, 0.5), "cm")
+            ),
+        rel_widths = c(0.4, 0.7),
+        labels = c("C", "D")
+    ),
+    plot_grid(
+        chap4_1e &
+            theme(
+                text = element_text(size = 14)
+            ), chap4_1f &
+            theme(
+                plot.margin = unit(c(-0.6, 0, 0.5, -0.3), "cm")
+            ),
+        labels = c("E", "F"),
+        scale = c(1, 1.1),
+        axis = "l"
+    ),
+    nrow = 3,
+    rel_heights = c(0.4, 0.25, 0.3)
+    )
+png(
+    "/Users/wenjunliu/PhD_thesis/Images/chapter_04/intro_diff.png",
+    width = 260, height =260, units='mm', res = 300
+)
+chap4_fig1
+dev.off()
+```
+
+
+## Figure 4.3
+
+```{r}
+gsea <- gsea_res_sig %>%
+    mutate(
+        hjust = ifelse(NES > 0, 1.05, -0.05)
+    ) %>%
+    ggplot(
+        aes(pathway,
+            NES,
+            fill = NES,
+        )) +
+    geom_bar(stat="identity", position="stack") +
+    scale_fill_distiller(palette = "RdBu",
+                          limit = c(-2.2, 2.2),
+                          name = "NES") +
+    xlab("") +
+    ylab("") +
+    geom_text(aes(label = pathway, y  = 0, hjust = hjust) ,
+                  size = 2.5) +
+    coord_flip()  +
+    scale_x_discrete(
+                     breaks = NULL) +
+    guides(size = FALSE) +
+    theme(
+        panel.grid = element_blank(),
+        text = element_text(size = 11),
+        legend.text = element_text(size = 6),
+        legend.title = element_text(size = 7),
+        panel.border = element_blank()
+    )
 # png(
-#      "/Users/wenjunliu/PhD_thesis/draft_figure/chapter_04/loading.png",
-#     width = 150, height =130, units='mm', res = 300
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/naive_gsea.png",
+#     width = 130, height =110, units='mm', res = 300
 # )
-# plotLoadings(splsda.final, contrib = 'max', method = 'median', comp = 1,
-#              title = "" ,size.name = 1,
-#              # legend.title = "Subtype", size.legend = 2, 
-#              legend.color = diag_cols[c("IDC", "ILC")], 
-#              legend = FALSE
-#              )
+# gsea
 # dev.off()
-# library(magick)
-# chap4_1f  <- image_read(path = "/Users/wenjunliu/PhD_thesis/draft_figure/chapter_04/loading.png") %>%
-#     image_ggplot()
-# ```
-# 
-# ```{r}
-# library(patchwork)
-# chap4_fig1 <- plot_grid(
-#     plot_grid(
-#         chap4_1a, chap4_1b, 
-#         rel_widths = c(0.6, 0.4), 
-#         labels = c("A", "B")
-#     ), 
-#     plot_grid(
-#         chap4_1c &
-#             theme(
-#                 text = element_text(size = 14)
-#             ), chap4_1d &
-#             theme(
-#                 strip.text  = element_text(size = 12), 
-#                 legend.text = element_text(size = 11), 
-#                 legend.title = element_text(size = 12), 
-#                 plot.margin = unit(c(0, 0, 0.5, 0.5), "cm")
-#             ), 
-#         rel_widths = c(0.4, 0.7), 
-#         labels = c("C", "D")
-#     ), 
-#     plot_grid(
-#         chap4_1e &
-#             theme(
-#                 text = element_text(size = 14)
-#             ), chap4_1f &
-#             theme(
-#                 plot.margin = unit(c(-0.6, 0, 0.5, -0.3), "cm")
-#             ), 
-#         labels = c("E", "F"), 
-#         scale = c(1, 1.1), 
-#         axis = "l"
-#     ), 
-#     nrow = 3, 
-#     rel_heights = c(0.4, 0.25, 0.3) 
-#     )
+```
+
+## Supp Fig ROC curve
+```{r}
+# png("~/PhD_thesis/Images/chapter_04/ROC.png",
+#     width = 120, height =80, units='mm', res = 300)
+#  auroc(splsda.final, newdata = combined_test, outcome.test = test_type, roc.comp = 2, print = FALSE,
+#     legend.title = "Subtype")
+# dev.off()
+```
+
+## Supp 4.2
+
+```{r}
+sup1a <- splsda.pred_CellLine$class$mahalanobis.dist %>%
+    as.data.frame() %>%
+    rownames_to_column("sample") %>%
+    left_join(cell_meta_his) %>%
+    dplyr::select(cell_line,
+                  `sPLS-DA` = "comp2",
+                  `Cell-line` = Histology) %>%
+    dplyr::filter(str_detect(`Cell-line`, "like", TRUE)) %>%
+    unique() %>%
+    droplevels() %>%
+    pivot_longer(
+        cols = -"cell_line",
+        names_to = "Type",
+        values_to = "Subtype"
+    ) %>%
+    ggplot(
+        aes(factor(cell_line, levels = c("MCF7", "T47D",
+                                         "MDAMB134VI", "SUM44")),
+            Type,
+            # str_wrap(Type, 10),
+            color = Subtype)
+    ) +
+    geom_point(
+        size = 7,
+        # aes(shape = Type)
+    ) +
+    scale_color_manual(
+        values = c(
+            diag_cols),
+        name = "Subtype",
+        drop = FALSE
+    ) +
+    coord_fixed() +
+    labs( x = "", y = "") +
+    # guides(color=guide_legend(ncol=2)) +
+    theme(
+        panel.grid = element_blank()
+    )
+```
+
+```{r}
+pred_result_ellis <- readRDS(here::here("figure/ellis_pred.rds"))
+ellis_order <- pred_result_ellis %>%
+  dplyr::filter(Type == "Pathologist Label") %>%
+  mutate(
+    group = paste(Subtype, align,sep = "_"),
+    group = factor(group, levels = c("ILC_TRUE", "IDC_TRUE", "IDC_FALSE"))) %>%
+  .[order(.$group),]
+sup1b <- pred_result_ellis %>%
+    mutate(Type = ifelse(
+        str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
+    )) %>%
+    ggplot(
+        aes(
+            factor(subject_id, levels = ellis_order$subject_id),
+            str_wrap(Type,10),
+            #Type,
+            color = str_wrap(Subtype, 15))
+    ) +
+    geom_point(
+        size = 7,
+        # aes(shape = Type)
+    ) +
+    scale_color_manual(
+        values = diag_cols %>%
+            set_names(str_wrap(names(diag_cols), 15)),
+        name = "Subtype"
+    ) +
+    coord_fixed(1.5) +
+    labs( x = "", y = "")+
+    theme(
+        legend.box.background = element_rect(colour = "black")
+    )
+```
+
+```{r}
+sup1c <- ILC_score_cell %>%
+    rownames_to_column("sample") %>%
+    left_join(cell_meta_his) %>%
+    left_join(pred_result_cell) %>%
+    dplyr::filter(
+        Type == "Cell-line type",
+        str_detect(Subtype, "like", TRUE)) %>%
+    ggplot(
+        aes(Subtype, TotalScore, color = Subtype )
+    ) +
+    geom_boxplot() +
+    scale_color_manual(values = c(diag_cols, "ILC-like" = "darkgreen"),
+                       name = "Subtype") +
+
+    labs(
+        x = "Cell-line type",
+        y = "ILC scores") +
+    theme(legend.position = "none")
+```
+
+```{r}
+ILC_score_ellis <- readRDS(here::here("figure/ellis_ILC_score.rds"))
+sup1d <- ILC_score_ellis %>%
+    dplyr::select(Type, Subtype, TotalScore, subject_id) %>%
+    unique() %>%
+    mutate(Type = ifelse(
+        str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
+    )) %>%
+    pivot_wider(
+        names_from = "Type",
+        values_from = "Subtype"
+    ) %>%
+    mutate(
+        Type = ifelse(
+            `sPLS-DA` ==  Pathologist, Pathologist, "Discordant"
+        ),
+        Type = factor(Type, levels = c("IDC", "ILC", "Discordant"))
+    ) %>%
+    ggplot(
+        aes(Type, TotalScore, color =Type )
+    ) +
+    geom_boxplot() +
+    scale_color_manual(values = diag_cols,
+                       name = "Subtype") +
+    theme(
+        # axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "none"
+    ) +
+    labs(
+        x = "",
+        y = "ILC scores") +
+    geom_point(aes(color = Type))
+```
+
+```{r}
+pred_result_enobosarm <- readRDS(here::here("figure/enobosarm_pred.rds"))
+enobosarm_order <- pred_result_enobosarm %>%
+  dplyr::filter(Type == "Pathologist Label") %>%
+  .[order(.$align),]
+sup1e <- pred_result_enobosarm %>%
+    mutate(Type = ifelse(
+        str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
+    )) %>%
+    ggplot(
+        aes(
+            factor(patient, levels = enobosarm_order$patient),
+            str_wrap(Type, 10),  color = Subtype)
+    ) +
+    geom_point(
+        size = 7,
+        # aes(shape = Type)
+    ) +
+    scale_color_manual(
+        values = c(diag_cols, "Unknow" = "grey"),
+        name = "Subtype"
+    ) +
+    coord_fixed() +
+    labs( x = "", y = "") +
+    theme(
+        legend.box.background = element_rect(colour = "black"))
+```
+
+```{r}
+ILC_score_enobosarm <- readRDS(here::here("figure/enobosarm_ILC_score.rds"))
+sup1f <- ILC_score_enobosarm %>%
+    drop_na() %>%
+    dplyr::select(Type, Subtype, TotalScore, patient) %>%
+    unique() %>%
+    mutate(Type = ifelse(
+        str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
+    )) %>%
+    pivot_wider(
+        names_from = "Type",
+        values_from = "Subtype"
+    ) %>%
+    mutate(
+        Type = ifelse(
+            `sPLS-DA` ==  Pathologist, Pathologist, "Discordant"
+        ),
+        Type = factor(Type, levels = c("IDC", "ILC", "Discordant"))
+    ) %>%
+    ggplot(
+        aes(Type, TotalScore, color = Type)
+    ) +
+    geom_boxplot() +
+    scale_color_manual(values = diag_cols,
+                       name = "subtype") +
+    theme(
+    # axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "none"
+    )+
+    labs(
+        x = "",
+        y = "ILC scores") +
+    geom_point(aes(color = Type))
+```
+
+```{r}
+sup1g <- ILC_score_veh %>%
+    rownames_to_column("name") %>%
+    dplyr::select(-contains("Dispersion")) %>%
+    pivot_longer(
+        cols = -"name",
+        names_to = "Score_type",
+        values_to = "score"
+    ) %>%
+    left_join(tumor_sample %>%
+                  dplyr::select(name, patient, Diagnosis)) %>%
+    ggplot(
+        aes(Diagnosis, score, color = Diagnosis)
+    ) +
+    geom_boxplot() +
+    scale_color_manual(values = new_diag_col,
+                       name = "Predicted Subtype") +
+    labs(
+        x = "Predicted Subtype",
+        y = "ILC scores") +
+    geom_point(aes(color = Diagnosis)) +
+    facet_wrap(~Score_type
+               # , scale = "free_y"
+               )  +
+    theme(legend.position = "none")
+```
+
+```{r, fig.height=8, fig.width=10}
+sup1 <- ((((sup1a | sup1b) & theme(axis.text.x = element_text(angle = 45, hjust = 1))) +
+    plot_layout(widths = c(0.3, 0.7))) /
+    (((sup1c + theme(axis.title.y = element_text(vjust = -12))) | plot_spacer() | (sup1d + theme(strip.text = element_text(size = 27))) ) +
+    plot_layout(widths = c(0.3, 0.1, 0.7))) /
+    (((sup1e + theme(axis.text.x = element_text(angle = 45, hjust = 1))) | (sup1f + theme(axis.title.x = element_text( vjust = 7)))) +
+    plot_layout(widths = c(0.6, 0.4))) /
+    (((sup1g + theme(axis.title.y = element_text(vjust = -12), strip.text = element_text(size = 27)))| plot_spacer()) +
+    plot_layout(widths = c(0.9, 0.1)) )) +
+    plot_annotation(
+        tag_levels = "A"
+    ) +
+    plot_layout(
+        guides = "collect",
+        heights = c(0.2, 0.3, 0.3, 0.3)
+    ) &
+    theme(
+        plot.tag = element_text(size = 26, face = "bold" ),
+        text = element_text(size = 24),
+        legend.key.size = unit(2, "cm"),
+        legend.box.background = element_rect(colour = "black", size = 2),
+        legend.box.spacing = unit(10, "mm")
+    )
 # png(
-#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/intro_diff.png",
-#     width = 260, height =260, units='mm', res = 300
+#     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/classifier.png",
+#     width = 450, height =500, units='mm', res = 300
 # )
-# chap4_fig1
+# sup1
 # dev.off()
-# ```
-# 
-# 
-# ## Figure 4.3
-# 
-# ```{r}
-# gsea <- gsea_res_sig %>%
-#     mutate(
-#         hjust = ifelse(NES > 0, 1.05, -0.05)
-#     ) %>%
-#     ggplot(
-#         aes(pathway, 
-#             NES, 
-#             fill = NES, 
-#         )) +
-#     geom_bar(stat="identity", position="stack") +
-#     scale_fill_distiller(palette = "RdBu", 
-#                           limit = c(-2.2, 2.2),
-#                           name = "NES") +
-#     xlab("") +
-#     ylab("") +
-#     geom_text(aes(label = pathway, y  = 0, hjust = hjust) , 
-#                   size = 2.5) + 
-#     coord_flip()  +
-#     scale_x_discrete(
-#                      breaks = NULL) +
-#     guides(size = FALSE) +
-#     theme( 
-#         panel.grid = element_blank(), 
-#         text = element_text(size = 11),  
-#         legend.text = element_text(size = 6), 
-#         legend.title = element_text(size = 7),
-#         panel.border = element_blank()
-#     )
-# # png(
-# #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/naive_gsea.png",
-# #     width = 130, height =110, units='mm', res = 300
-# # )
-# # gsea
-# # dev.off()
-# ```
-# 
-# ## Supp Fig ROC curve
-# ```{r}
-# # png("~/PhD_thesis/Images/chapter_04/ROC.png",
-# #     width = 120, height =80, units='mm', res = 300)
-# #  auroc(splsda.final, newdata = combined_test, outcome.test = test_type, roc.comp = 2, print = FALSE,
-# #     legend.title = "Subtype")
-# # dev.off()
-# ```
-# 
-# ## Supp 4.2
-# 
-# ```{r}
-# sup1a <- splsda.pred_CellLine$class$mahalanobis.dist %>%
-#     as.data.frame() %>%
-#     rownames_to_column("sample") %>%
-#     left_join(cell_meta_his) %>%
-#     dplyr::select(cell_line, 
-#                   `sPLS-DA` = "comp2", 
-#                   `Cell-line` = Histology) %>%
-#     dplyr::filter(str_detect(`Cell-line`, "like", TRUE)) %>%
-#     unique() %>%
-#     droplevels() %>%
-#     pivot_longer(
-#         cols = -"cell_line", 
-#         names_to = "Type", 
-#         values_to = "Subtype"
-#     ) %>%
-#     ggplot(
-#         aes(factor(cell_line, levels = c("MCF7", "T47D", 
-#                                          "MDAMB134VI", "SUM44")), 
-#             Type,
-#             # str_wrap(Type, 10),  
-#             color = Subtype)
-#     ) +
-#     geom_point(
-#         size = 7, 
-#         # aes(shape = Type)
-#     ) +
-#     scale_color_manual(
-#         values = c(
-#             diag_cols), 
-#         name = "Subtype", 
-#         drop = FALSE
-#     ) +
-#     coord_fixed() +
-#     labs( x = "", y = "") +
-#     # guides(color=guide_legend(ncol=2)) +
-#     theme(
-#         panel.grid = element_blank()
-#     )
-# ```
-# 
-# ```{r}
-# pred_result_ellis <- readRDS(here::here("figure/ellis_pred.rds"))
-# ellis_order <- pred_result_ellis %>%
-#   dplyr::filter(Type == "Pathologist Label") %>%
-#   mutate(
-#     group = paste(Subtype, align,sep = "_"), 
-#     group = factor(group, levels = c("ILC_TRUE", "IDC_TRUE", "IDC_FALSE"))) %>%
-#   .[order(.$group),] 
-# sup1b <- pred_result_ellis %>%
-#     mutate(Type = ifelse(
-#         str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
-#     )) %>%
-#     ggplot(
-#         aes(
-#             factor(subject_id, levels = ellis_order$subject_id), 
-#             str_wrap(Type,10), 
-#             #Type,
-#             color = str_wrap(Subtype, 15))
-#     ) +
-#     geom_point(
-#         size = 7, 
-#         # aes(shape = Type)
-#     ) +
-#     scale_color_manual(
-#         values = diag_cols %>%
-#             set_names(str_wrap(names(diag_cols), 15)), 
-#         name = "Subtype"
-#     ) +
-#     coord_fixed(1.5) +
-#     labs( x = "", y = "")+
-#     theme(
-#         legend.box.background = element_rect(colour = "black")
-#     )
-# ```
-# 
-# ```{r}
-# sup1c <- ILC_score_cell %>%
-#     rownames_to_column("sample") %>%
-#     left_join(cell_meta_his) %>%
-#     left_join(pred_result_cell) %>%
-#     dplyr::filter(
-#         Type == "Cell-line type", 
-#         str_detect(Subtype, "like", TRUE)) %>%
-#     ggplot(
-#         aes(Subtype, TotalScore, color = Subtype )
-#     ) +
-#     geom_boxplot() +
-#     scale_color_manual(values = c(diag_cols, "ILC-like" = "darkgreen"), 
-#                        name = "Subtype") +
-# 
-#     labs(
-#         x = "Cell-line type", 
-#         y = "ILC scores") +
-#     theme(legend.position = "none")
-# ```
-# 
-# ```{r}
-# ILC_score_ellis <- readRDS(here::here("figure/ellis_ILC_score.rds"))
-# sup1d <- ILC_score_ellis %>%
-#     dplyr::select(Type, Subtype, TotalScore, subject_id) %>%
-#     unique() %>%
-#     mutate(Type = ifelse(
-#         str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
-#     )) %>%
-#     pivot_wider(
-#         names_from = "Type", 
-#         values_from = "Subtype"
-#     ) %>%
-#     mutate(
-#         Type = ifelse(
-#             `sPLS-DA` ==  Pathologist, Pathologist, "Discordant"
-#         ), 
-#         Type = factor(Type, levels = c("IDC", "ILC", "Discordant"))
-#     ) %>%
-#     ggplot(
-#         aes(Type, TotalScore, color =Type )
-#     ) +
-#     geom_boxplot() +
-#     scale_color_manual(values = diag_cols, 
-#                        name = "Subtype") +
-#     theme(
-#         # axis.text.x = element_blank(), 
-#         axis.ticks.x = element_blank(), 
-#         legend.position = "none"
-#     ) +
-#     labs(
-#         x = "", 
-#         y = "ILC scores") +
-#     geom_point(aes(color = Type)) 
-# ```
-# 
-# ```{r}
-# pred_result_enobosarm <- readRDS(here::here("figure/enobosarm_pred.rds"))
-# enobosarm_order <- pred_result_enobosarm %>%
-#   dplyr::filter(Type == "Pathologist Label") %>%
-#   .[order(.$align),] 
-# sup1e <- pred_result_enobosarm %>%
-#     mutate(Type = ifelse(
-#         str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
-#     )) %>%
-#     ggplot(
-#         aes(
-#             factor(patient, levels = enobosarm_order$patient), 
-#             str_wrap(Type, 10),  color = Subtype)
-#     ) +
-#     geom_point(
-#         size = 7, 
-#         # aes(shape = Type)
-#     ) +
-#     scale_color_manual(
-#         values = c(diag_cols, "Unknow" = "grey"), 
-#         name = "Subtype"
-#     ) +
-#     coord_fixed() +
-#     labs( x = "", y = "") +
-#     theme(
-#         legend.box.background = element_rect(colour = "black"))
-# ```
-# 
-# ```{r}
-# ILC_score_enobosarm <- readRDS(here::here("figure/enobosarm_ILC_score.rds"))
-# sup1f <- ILC_score_enobosarm %>%
-#     drop_na() %>%
-#     dplyr::select(Type, Subtype, TotalScore, patient) %>%
-#     unique() %>%
-#     mutate(Type = ifelse(
-#         str_detect(Type, "prediction"), "sPLS-DA", "Pathologist"
-#     )) %>%
-#     pivot_wider(
-#         names_from = "Type", 
-#         values_from = "Subtype"
-#     ) %>%
-#     mutate(
-#         Type = ifelse(
-#             `sPLS-DA` ==  Pathologist, Pathologist, "Discordant"
-#         ), 
-#         Type = factor(Type, levels = c("IDC", "ILC", "Discordant"))
-#     ) %>%
-#     ggplot(
-#         aes(Type, TotalScore, color = Type)
-#     ) +
-#     geom_boxplot() +
-#     scale_color_manual(values = diag_cols, 
-#                        name = "subtype") +
-#     theme(
-#     # axis.text.x = element_blank(), 
-#     axis.ticks.x = element_blank(), 
-#     legend.position = "none"
-#     )+
-#     labs(
-#         x = "", 
-#         y = "ILC scores") +
-#     geom_point(aes(color = Type))
-# ```
-# 
-# ```{r}
-# sup1g <- ILC_score_veh %>%
-#     rownames_to_column("name") %>%
-#     dplyr::select(-contains("Dispersion")) %>%
-#     pivot_longer(
-#         cols = -"name", 
-#         names_to = "Score_type", 
-#         values_to = "score"
-#     ) %>%
-#     left_join(tumor_sample %>%
-#                   dplyr::select(name, patient, Diagnosis)) %>%
-#     ggplot(
-#         aes(Diagnosis, score, color = Diagnosis)
-#     ) +
-#     geom_boxplot() +
-#     scale_color_manual(values = new_diag_col, 
-#                        name = "Predicted Subtype") +
-#     labs(
-#         x = "Predicted Subtype", 
-#         y = "ILC scores") +
-#     geom_point(aes(color = Diagnosis)) +
-#     facet_wrap(~Score_type
-#                # , scale = "free_y"
-#                )  +
-#     theme(legend.position = "none")
-# ```
-# 
-# ```{r, fig.height=8, fig.width=10}
-# sup1 <- ((((sup1a | sup1b) & theme(axis.text.x = element_text(angle = 45, hjust = 1))) +
-#     plot_layout(widths = c(0.3, 0.7))) /
-#     (((sup1c + theme(axis.title.y = element_text(vjust = -12))) | plot_spacer() | (sup1d + theme(strip.text = element_text(size = 27))) ) +
-#     plot_layout(widths = c(0.3, 0.1, 0.7))) /
-#     (((sup1e + theme(axis.text.x = element_text(angle = 45, hjust = 1))) | (sup1f + theme(axis.title.x = element_text( vjust = 7)))) +
-#     plot_layout(widths = c(0.6, 0.4))) /
-#     (((sup1g + theme(axis.title.y = element_text(vjust = -12), strip.text = element_text(size = 27)))| plot_spacer()) +
-#     plot_layout(widths = c(0.9, 0.1)) )) +
-#     plot_annotation(
-#         tag_levels = "A"
-#     ) +
-#     plot_layout(
-#         guides = "collect", 
-#         heights = c(0.2, 0.3, 0.3, 0.3)
-#     ) &
-#     theme(
-#         plot.tag = element_text(size = 26, face = "bold" ), 
-#         text = element_text(size = 24), 
-#         legend.key.size = unit(2, "cm"), 
-#         legend.box.background = element_rect(colour = "black", size = 2), 
-#         legend.box.spacing = unit(10, "mm")
-#     )
-# # png(
-# #     "/Users/wenjunliu/PhD_thesis/Images/chapter_04/classifier.png",
-# #     width = 450, height =500, units='mm', res = 300
-# # )
-# # sup1
-# # dev.off()
 ```
 
 
